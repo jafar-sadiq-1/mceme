@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
+import AddReceipt from './AddReceipt';
+import UpdateReceipt from './UpdateReceipt';
+import DeleteReceipt from './DeleteReceipt';
 
 const ReceiptForm = () => {
-  const [newReceipt, setNewReceipt] = useState({
+  const initialState = {
     date: "",
     rv: "RV",
     rvNo: "",
     particulars: "",
+    customParticulars: "",
     cash: "",
     bank: "",
     fdr: "",
@@ -13,27 +17,55 @@ const ReceiptForm = () => {
     syCr: "",
     property: "",
     emeJournalFund: "",
-  });
+  };
 
-  const [customParticulars, setCustomParticulars] = useState("");
+  const [newReceipt, setNewReceipt] = useState(initialState);
+  const [isCustomSelected, setIsCustomSelected] = useState(false);
+
+  const particularsOptions = [
+    "Option 1",
+    "Option 2",
+    "Option 3",
+    "Option 4",
+    "Custom"
+  ];
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewReceipt((prev) => ({ ...prev, [name]: value }));
-
-    // Handle customParticulars input separately
-    if (name === "customParticulars") {
-      setCustomParticulars(value);
+    
+    if (name === "particulars") {
+      if (value === "Custom") {
+        setIsCustomSelected(true);
+        setNewReceipt((prev) => ({
+          ...prev,
+          particulars: prev.customParticulars || "",
+          customParticulars: prev.customParticulars || ""
+        }));
+      } else {
+        setIsCustomSelected(false);
+        setNewReceipt((prev) => ({
+          ...prev,
+          particulars: value,
+          customParticulars: ""
+        }));
+      }
+    } else if (name === "customParticulars") {
+      setNewReceipt((prev) => ({
+        ...prev,
+        customParticulars: value,
+        particulars: value
+      }));
+    } else {
+      setNewReceipt((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
     }
   };
 
-  const handleParticularsChange = (e) => {
-    if (newReceipt.particulars === "custom") {
-      setNewReceipt((prev) => ({
-        ...prev,
-        particulars: customParticulars,
-      }));
-    } 
+  const resetForm = () => {
+    setNewReceipt(initialState);
+    setIsCustomSelected(false);
   };
 
   return (
@@ -50,7 +82,6 @@ const ReceiptForm = () => {
             className="w-full border border-gray-300 rounded-lg px-4 py-2"
           />
         </div>
-
         <div>
           <label className="block text-gray-700 font-medium mb-1">RV:</label>
           <div className="flex space-x-2">
@@ -61,7 +92,7 @@ const ReceiptForm = () => {
               className="w-full border border-gray-300 rounded-lg px-4 py-2"
             >
               <option value="RV">RV</option>
-              <option value="CE PV">CE PV</option>
+              <option value="CE RV">CE RV</option>
               <option value="BBF">BBF</option>
             </select>
             <input
@@ -69,45 +100,42 @@ const ReceiptForm = () => {
               name="rvNo"
               value={newReceipt.rvNo}
               onChange={handleInputChange}
-              placeholder={newReceipt.rv === "BBF" ? "" : `Enter ${newReceipt.rv} number`}
+              placeholder={
+                newReceipt.rv === "BBF" ? "" : `Enter ${newReceipt.rv} number`
+              }
               className="w-full border border-gray-300 rounded-lg px-4 py-2"
               disabled={newReceipt.rv === "BBF"}
             />
           </div>
         </div>
-
         <div>
           <label className="block text-gray-700 font-medium mb-1">Particulars:</label>
           <div className="flex space-x-2">
             <select
               name="particulars"
-              value={newReceipt.particulars}
+              value={isCustomSelected ? "Custom" : newReceipt.particulars}
               onChange={handleInputChange}
               className="w-full border border-gray-300 rounded-lg px-4 py-2"
             >
               <option value="">Select Particulars</option>
-              <option value="Option1">Option 1</option>
-              <option value="Option2">Option 2</option>
-              <option value="Option3">Option 3</option>
-              <option value="custom">Custom</option>
+              {particularsOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
             </select>
-
-            {newReceipt.particulars === "custom" && (
-              <div className="w-full">
-                <input
-                  type="text"
-                  name="customParticulars"
-                  value={customParticulars}
-                  onChange={handleInputChange} // Directly update customParticulars
-                  onBlur={handleParticularsChange}
-                  placeholder="Enter custom particulars"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                />
-              </div>
+            {isCustomSelected && (
+              <input
+                type="text"
+                name="customParticulars"
+                value={newReceipt.customParticulars}
+                onChange={handleInputChange}
+                placeholder="Enter custom particulars"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2"
+              />
             )}
           </div>
         </div>
-
         <div>
           <label className="block text-gray-700 font-medium mb-1">Cash:</label>
           <input
@@ -119,7 +147,6 @@ const ReceiptForm = () => {
             className="w-full border border-gray-300 rounded-lg px-4 py-2"
           />
         </div>
-
         <div>
           <label className="block text-gray-700 font-medium mb-1">Bank:</label>
           <input
@@ -131,7 +158,6 @@ const ReceiptForm = () => {
             className="w-full border border-gray-300 rounded-lg px-4 py-2"
           />
         </div>
-
         <div>
           <label className="block text-gray-700 font-medium mb-1">FDR:</label>
           <input
@@ -143,7 +169,6 @@ const ReceiptForm = () => {
             className="w-full border border-gray-300 rounded-lg px-4 py-2"
           />
         </div>
-
         <div>
           <label className="block text-gray-700 font-medium mb-1">Sy Dr:</label>
           <input
@@ -155,7 +180,6 @@ const ReceiptForm = () => {
             className="w-full border border-gray-300 rounded-lg px-4 py-2"
           />
         </div>
-
         <div>
           <label className="block text-gray-700 font-medium mb-1">Sy Cr:</label>
           <input
@@ -167,7 +191,6 @@ const ReceiptForm = () => {
             className="w-full border border-gray-300 rounded-lg px-4 py-2"
           />
         </div>
-
         <div>
           <label className="block text-gray-700 font-medium mb-1">Property:</label>
           <input
@@ -175,11 +198,10 @@ const ReceiptForm = () => {
             name="property"
             value={newReceipt.property}
             onChange={handleInputChange}
-            placeholder="Enter property amount"
+            placeholder="Enter Property amount"
             className="w-full border border-gray-300 rounded-lg px-4 py-2"
           />
         </div>
-
         <div>
           <label className="block text-gray-700 font-medium mb-1">EME Journal Fund:</label>
           <input
@@ -187,13 +209,19 @@ const ReceiptForm = () => {
             name="emeJournalFund"
             value={newReceipt.emeJournalFund}
             onChange={handleInputChange}
-            placeholder="Enter EME journal fund amount"
+            placeholder="Enter EME Journal Fund amount"
             className="w-full border border-gray-300 rounded-lg px-4 py-2"
           />
         </div>
-
         <div className="flex space-x-4">
-          {/* Pass props to AddReceipt, UpdateReceipt, and DeleteReceipt as needed */}
+          <AddReceipt newReceipt={newReceipt} onSuccess={resetForm} />
+          <UpdateReceipt newReceipt={newReceipt} onSuccess={resetForm} />
+          <DeleteReceipt 
+            year={newReceipt.date ? new Date(newReceipt.date).getFullYear() : null} 
+            rv={newReceipt.rv} 
+            rvNo={newReceipt.rvNo}
+            onSuccess={resetForm} 
+          />
         </div>
       </form>
     </div>
