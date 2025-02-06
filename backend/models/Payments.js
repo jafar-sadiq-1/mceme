@@ -37,7 +37,7 @@ paymentSchema.pre('save', function (next) {
   next();
 });
 
-// Create and export the Receipt model
+// Create and export the Payment model
 const Payment = mongoose.model('Payment', paymentSchema);
 
 // Function to initialize indexes
@@ -53,7 +53,7 @@ async function initializeIndexes() {
         unique: true,
         name: 'unique_year_pv_pvno',
         background: true,
-        partialFilterExpression: { pv: { $ne: 'BBF' } }
+        partialFilterExpression: { pvNo: { $exists: true } } // ✅ Fixed Condition
       }
     );
     console.log('Indexes recreated successfully');
