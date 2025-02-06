@@ -1,10 +1,14 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.jsx'
+import React from "react";
+import { createRoot } from "react-dom/client"; // ✅ Correct import
+import ContextProvider from "./AppContext/ContextProvider"; // ✅ Correct import
+import App from "./App"; // ✅ Correct import
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+
+const root = createRoot(document.getElementById("root")); // ✅ Use createRoot properly
+root.render(
+  <React.StrictMode>
+    <ContextProvider>
+      <App />
+    </ContextProvider>
+  </React.StrictMode>
+);

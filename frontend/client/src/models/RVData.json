@@ -1,0 +1,80 @@
+[
+  {
+    "date": "2024-01-01",
+    "rv": "RV",
+    "rvNo": "001",
+    "particulars": "Opening Balance",
+    "cash": "1000",
+    "bank": "5000",
+    "fdr": "2000",  
+    "syDr": "300",
+    "syCr": "0",
+    "property": "10000",
+    "emeJournalFund": "500"
+  },
+  {
+    "date": "2024-01-02",
+    "rv": "RV",
+    "rvNo": "002",
+    "particulars": "Salary Payment",
+    "cash": "-2000",
+    "bank": "-3000",
+    "fdr": "0",
+    "syDr": "0",
+    "syCr": "500",
+    "property": "0",
+    "emeJournalFund": "200"
+  },
+  {
+    "date": "2024-01-02",
+    "rv": "RV",
+    "rvNo": "002",
+    "particulars": "Salary Payment",
+    "cash": "-2000",
+    "bank": "-3000",
+    "fdr": "0",
+    "syDr": "0",
+    "syCr": "500",
+    "property": "0",
+    "emeJournalFund": "200"
+  },
+  {
+    "date": "2024-01-03",
+    "rv": "RV",
+    "rvNo": "003",
+    "particulars": "Office Rent",
+    "cash": "-1500",
+    "bank": "-3500",
+    "fdr": "0",
+    "syDr": "0",
+    "syCr": "0",
+    "property": "0",
+    "emeJournalFund": "100"
+  },
+  {
+    "date": "2024-01-04",
+    "rv": "RV",
+    "rvNo": "004",
+    "particulars": "Equipment Purchase",
+    "cash": "-500",
+    "bank": "-4500",
+    "fdr": "0",
+    "syDr": "200",
+    "syCr": "0",
+    "property": "7000",
+    "emeJournalFund": "0"
+  },
+  {
+    "date": "2024-01-04",
+    "rv": "RV",
+    "rvNo": "004",
+    "particulars": "Equipment Purchase",
+    "cash": "-500",
+    "bank": "-4500",
+    "fdr": "0",
+    "syDr": "200",
+    "syCr": "0",
+    "property": "7000",
+    "emeJournalFund": "0"
+  }
+]

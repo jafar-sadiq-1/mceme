@@ -14,25 +14,30 @@ const HomePage = () => {
     { text: 'Comparison', path: '/comparison' },
     { text: 'FDR', path: '/fdr' },
     { text: 'SY DR', path: '/sy-dr' },
+    { text: 'Units', path: '/units' },
+    { text: 'All Payments', path: '/allpayments' },
+    { text: 'All Receipts', path: '/allreceipts' },
   ];
   return (
-    <>
-      {/* <Header /> */}
-      <div className="p-4">
-      <div className="grid grid-cols-3 gap-4">
-        {buttons.map(({ path, text }, index) => (
-          <button
+    <div className="min-h-screen bg-gradient-to-r from-teal-100 to-violet-100 flex flex-col">
+      <Header />
+      {/* Center content */}
+      <div className="flex flex-grow items-center justify-center">
+        {/* Grid for buttons */}
+        <div className="grid grid-cols-3 gap-8 p-8 max-w-5xl text-center">
+          {buttons.map(({ path, text }, index) => (
+            <button
             key={index}
             onClick={() => navigate(path)}
-            className="p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
+            className="p-6 text-xl font-serif bg-green-400 text-black border-2 border-black rounded-2xl hover:scale-110 hover:bg-green-500 transition-transform duration-200"
           >
             {text}
           </button>
-        ))}
+          
+          ))}
+        </div>
       </div>
     </div>
-
-    </>
   );
 };
 

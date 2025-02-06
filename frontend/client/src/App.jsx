@@ -16,11 +16,13 @@ import SyDrPage from './Pages/SyDrPage';
 import UsersAndRequestPage from './Pages/UsersAndRequestPage';
 import ChangePasswordPage from './Pages/ChangePasswordPage';
 import Header from './components/Header';
+import UnitsPage from './Pages/UnitsPage';
+import AllPaymentsPage from './Pages/AllPaymentsPage';
+import AllReceiptsPage from './Pages/AllReceiptsPage';
 
 function App() {
   return (
     <Router>
-      <Header/>
       <div>
         <Routes>
           <Route path="/" element={<LoginPage />} />
@@ -36,6 +38,9 @@ function App() {
           <Route path="/sy-dr" element={<SyDrPage />} />
           <Route path='/users-requests' element={<UsersAndRequestPage/>}/>
           <Route path='/change-password' element={<ChangePasswordPage/>}/>
+          <Route path='/units' element={<UnitsPage/>}/>
+          <Route path='/allpayments' element={<AllPaymentsPage/>}/>
+          <Route path='/allreceipts' element={<AllReceiptsPage/>}/>
         </Routes>
       </div>
     </Router>
