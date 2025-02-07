@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
+import Header from '../components/Header';
 
 const UsersAndRequestPage = () => {
   const [users, setUsers] = useState([]);
@@ -61,6 +62,7 @@ const UsersAndRequestPage = () => {
 
   return (
     <div className="p-4">
+      <Header />
       <h2 className="text-2xl font-bold mb-4 text-center text-blue-500">Users - {users.length}</h2>
       {loading ? (
         <p>Loading...</p>

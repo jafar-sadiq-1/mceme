@@ -21,6 +21,7 @@ const ReceiptForm = () => {
 
   const [newReceipt, setNewReceipt] = useState(initialState);
   const [isCustomSelected, setIsCustomSelected] = useState(false);
+  const [error, setError] = useState(null);
 
   const particularsOptions = [
     "Option 1",
@@ -66,6 +67,24 @@ const ReceiptForm = () => {
   const resetForm = () => {
     setNewReceipt(initialState);
     setIsCustomSelected(false);
+    setError(null);
+  };
+
+  const validateForm = () => {
+    if (!newReceipt.date) {
+      setError("Date is required");
+      return false;
+    }
+    if (!newReceipt.particulars) {
+      setError("Particulars is required");
+      return false;
+    }
+    if (newReceipt.rv !== "BBF" && !newReceipt.rvNo) {
+      setError("RV number is required");
+      return false;
+    }
+    setError(null);
+    return true;
   };
 
   return (
@@ -213,15 +232,40 @@ const ReceiptForm = () => {
             className="w-full border border-gray-300 rounded-lg px-4 py-2"
           />
         </div>
-        <div className="flex space-x-4">
-          <AddReceipt newReceipt={newReceipt} onSuccess={resetForm} />
-          <UpdateReceipt newReceipt={newReceipt} onSuccess={resetForm} />
-          <DeleteReceipt 
-            year={newReceipt.date ? new Date(newReceipt.date).getFullYear() : null} 
-            rv={newReceipt.rv} 
-            rvNo={newReceipt.rvNo}
-            onSuccess={resetForm} 
+        <div className="flex space-x-4 mt-4">
+          <AddReceipt 
+            newReceipt={newReceipt} 
+            onSuccess={() => {
+              resetForm();
+              // You can add a success message here if needed
+            }}
+            validateForm={validateForm}
           />
+          <UpdateReceipt 
+            newReceipt={newReceipt}
+            onSuccess={() => {
+              resetForm();
+              // You can add a success message here if needed
+            }}
+            validateForm={validateForm}
+          />
+          <DeleteReceipt 
+            year={new Date(newReceipt.date).getFullYear()}
+            rv={newReceipt.rv}
+            rvNo={newReceipt.rvNo}
+            onSuccess={() => {
+              resetForm();
+              // You can add a success message here if needed
+            }}
+            validateForm={validateForm}
+          />
+        </div>
+        <div className="mt-4">
+          {error && (
+            <div className="text-red-500 text-sm">
+              {error}
+            </div>
+          )}
         </div>
       </form>
     </div>

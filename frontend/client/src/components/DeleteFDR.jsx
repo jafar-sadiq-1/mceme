@@ -21,8 +21,9 @@ const DeleteForm = ({ newFdr }) => {
 
   return (
     <button
+      type="submit"
       onClick={handleDeleteFdr}
-      className="bg-red-500 text-white px-4 py-2 rounded-lg"
+      className="bg-red-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:scale-110 transition-transform duration-200"
     >
       Delete FDR
     </button>

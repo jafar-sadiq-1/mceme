@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import axios from 'axios';
+import { AppContext } from '../AppContext/ContextProvider';
 
-const UpdateReceipt = ({ newReceipt }) => {
+const UpdateReceipt = ({ newReceipt, onSuccess }) => {
+
+  const { setReceipts } = useContext(AppContext);
 
   const handleUpdateReceipt = async () => {
     try {
@@ -26,10 +29,15 @@ const UpdateReceipt = ({ newReceipt }) => {
         emeJournalFund: newReceipt.emeJournalFund,
       };
 
-      console.log(updatedReceipt);
-      // Sending a PUT request to the backend to update the receipt
-      const response = await axios.put('http://localhost:5000/api/receipts/', updatedReceipt);
-      console.log(response.data);
+      // Update the receipt
+      await axios.put('http://localhost:5000/api/receipts', updatedReceipt);
+      
+      // Refresh the receipts list
+      const response = await axios.get("http://localhost:5000/api/receipts");
+      setReceipts(response.data);
+      
+      // Reset the form
+      onSuccess();
     } catch (error) {
       console.error("Error updating receipt:", error);
     }

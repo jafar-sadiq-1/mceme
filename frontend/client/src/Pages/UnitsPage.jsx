@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import {AppContext}  from '../AppContext/ContextProvider';
 import UnitForm from '../components/UnitsForm';
+import Header from '../components/Header';
 
 const UnitsPage = () => {
   const { units, setUnits } = useContext(AppContext);
@@ -29,6 +30,7 @@ const UnitsPage = () => {
 
   return (
     <div className="container mx-auto p-4">
+      <Header />
       <h1 className="text-3xl font-bold mb-4">Units Page</h1>
       <UnitForm/>
       <div className="flex justify-between items-center mb-4">

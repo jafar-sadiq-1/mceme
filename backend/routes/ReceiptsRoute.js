@@ -25,39 +25,65 @@ router.post("/", async (req, res) => {
     // Destructure fields from the request body
     const { rv, rvNo, date, particulars, cash, bank, fdr, syDr, syCr, property, emeJournalFund } = req.body;
 
+    // Check for required rvNo when rv is not BBF
+    if (rv !== 'BBF' && !rvNo) {
+      return res.status(400).json({ 
+        message: "RV Number is required for non-BBF entries" 
+      });
+    }
+
     // Create a new receipt
     const newReceipt = new Receipt({
       rv,
-      rvNo,
+      rvNo: Number(rvNo), // Ensure rvNo is a number
       date,
       particulars,
-      cash,
-      bank,
-      fdr,
-      syDr,
-      syCr,
-      property,
-      emeJournalFund
+      cash: Number(cash) || 0,
+      bank: Number(bank) || 0,
+      fdr: Number(fdr) || 0,
+      syDr: Number(syDr) || 0,
+      syCr: Number(syCr) || 0,
+      property: Number(property) || 0,
+      emeJournalFund: Number(emeJournalFund) || 0
     });
 
     // Save the receipt to the database
-    await newReceipt.save();
+    try {
+      await newReceipt.save();
+      
+      // Send success response
+      res.status(201).json({
+        message: "Receipt created successfully",
+        receipt: newReceipt
+      });
+    } catch (saveError) {
+      console.error("Save Error Details:", {
+        code: saveError.code,
+        keyPattern: saveError.keyPattern,
+        keyValue: saveError.keyValue
+      });
 
-    // Send success response
-    res.status(201).json({
-      message: "Receipt created successfully",
-      receipt: newReceipt
-    });
+      if (saveError.code === 11000) {
+        const keyValue = saveError.keyValue || {};
+        return res.status(400).json({ 
+          message: `A receipt with RV type ${keyValue.rv || rv} and number ${keyValue.rvNo || rvNo} already exists for year ${keyValue.year || new Date(date).getFullYear()}`
+        });
+      }
+      throw saveError;
+    }
   } catch (error) {
-    console.error("Error creating receipt:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Route Error:", error);
+    res.status(500).json({ 
+      message: "Server error", 
+      error: error.message,
+      details: error.code === 11000 ? error.keyValue : undefined
+    });
   }
 });
 
 // @route   DELETE /api/receipts
 // @desc    Delete a receipt based on year, rv, and rvNo
 router.delete("/", async (req, res) => {
-  console.log("Delete Request")
   try {
     const { year, rv, rvNo } = req.query;
 
@@ -84,12 +110,10 @@ router.delete("/", async (req, res) => {
 
 router.put('/', async (req, res) => {
   try {
-    console.log(req.body);
-    const { year, month, rv, rvNo, ...updateData } = req.body;
+    const { year, rv, rvNo, ...updateData } = req.body;
+    
     // Find the receipt to update
     const receipt = await Receipt.findOne({ year, rv, rvNo });
-
-    console.log(receipt);
 
     if (!receipt) {
       return res.status(404).json({ message: 'Receipt not found' });
@@ -97,18 +121,23 @@ router.put('/', async (req, res) => {
 
     // Update the fields
     Object.keys(updateData).forEach((key) => {
-      receipt[key] = updateData[key];
+      if (typeof updateData[key] === 'number') {
+        receipt[key] = Number(updateData[key]) || 0;
+      } else {
+        receipt[key] = updateData[key];
+      }
     });
 
-    // Save the updated receipt
     await receipt.save();
 
-    res.json({ message: 'Receipt updated successfully', receipt });
+    res.json({
+      message: 'Receipt updated successfully',
+      receipt
+    });
   } catch (error) {
     console.error('Error updating receipt:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
-
 
 module.exports = router;

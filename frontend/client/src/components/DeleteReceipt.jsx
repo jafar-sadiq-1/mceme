@@ -1,26 +1,29 @@
-import React from 'react';
-import axios from 'axios';  // Importing Axios
+import React, { useContext } from 'react';
+import axios from 'axios';
+import { AppContext } from '../AppContext/ContextProvider';
 
-const DeleteReceipt = ({ year, rv, rvNo }) => {
-  
+const DeleteReceipt = ({ year, rv, rvNo, onSuccess }) => {
+  const { setReceipts } = useContext(AppContext);
+
   const handleDeleteReceipt = async () => {
     try {
-      // Sending the DELETE request with year, rv, and rvNo
-      const response = await axios.delete('http://localhost:5000/api/receipts', {
-        params: {
-          year,
-          rv,
-          rvNo,
-        },
-      });
-
-      // If the deletion is successful
-      if (response.status === 200) {
-        console.log("Receipt deleted successfully:", response.data);
-        // Optionally, update the UI here or show a success message
+      if (!year || !rv || !rvNo) {
+        console.error("Missing required fields for deletion");
+        return;
       }
+
+      await axios.delete('http://localhost:5000/api/receipts', {
+        params: { year, rv, rvNo }
+      });
+      
+      // Refresh the receipts list
+      const response = await axios.get("http://localhost:5000/api/receipts");
+      setReceipts(response.data);
+      
+      // Reset the form
+      onSuccess();
     } catch (error) {
-      console.error("Error deleting receipt:", error.response ? error.response.data : error.message);
+      console.error("Error deleting receipt:", error.response?.data?.message || error.message);
     }
   };
 

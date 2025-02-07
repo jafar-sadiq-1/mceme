@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from "react";
 import axios from "axios";
 import FDRForm from "../components/FDRForm";
 import { AppContext } from "../AppContext/ContextProvider";
+import Header from '../components/Header';
 
 export default function FDRPage() {
   const { fdrs, setFdrs } = useContext(AppContext);
@@ -42,66 +43,56 @@ export default function FDRPage() {
     const maturityDateObj = new Date(maturityDate);
     return currentDate >= maturityDateObj;
   };
-
   return (
-    <div className="container mx-auto p-4">
-      <h2 className="text-3xl font-bold mb-4">FDR Page</h2>
-      
-      {/* Search Bar */}
-      <div className="flex justify-between items-center mb-4">
-        <input
-          type="text"
-          className="p-2 border rounded w-2/3"
-          placeholder="Search by FDR No"
-          value={search}
-          onChange={handleSearchChange}
-        />
-      </div>
-
-      {/* Display filtered FDRs */}
-      <div className="mt-8">
-        <table className="table-auto w-full border-collapse">
+  <>
+    <Header/>
+    <div className="p-6 bg-gradient-to-r from-teal-100 to-violet-100"style={{ fontFamily: 'Times New Roman, serif' }}>
+      <div className="bg-white shadow-md rounded-lg p-6">
+        <h2 className="text-3xl mb-4  text-center" style={{ color: '#6A1D8F' }}>FDR Details</h2>
+        <table className="table-auto w-full border-collapse border border-gray-300">
           <thead>
-            <tr className="bg-gray-200">
-              <th className="px-4 py-2 border-b">S.No</th>
-              <th className="px-4 py-2 border-b">FDR No</th>
-              <th className="px-4 py-2 border-b">Date of Deposit</th>
-              <th className="px-4 py-2 border-b">Amount</th>
-              <th className="px-4 py-2 border-b">Maturity Value</th>
-              <th className="px-4 py-2 border-b">Maturity Date</th>
-              <th className="px-4 py-2 border-b">Duration</th>
-              <th className="px-4 py-2 border-b">Int Rate %</th>
-              <th className="px-4 py-2 border-b">Interest Amount</th>
-              <th className="px-4 py-2 border-b">Bank</th>
-              <th className="px-4 py-2 border-b">Status</th> {/* New column for status */}
-              <th className="px-4 py-2 border-b">Remarks</th>
+            <tr className="bg-violet-600 text-black">
+              <th className="px-4 py-2 border border-gray-300">S No</th>
+              <th className="px-4 py-2 border border-gray-300">FDR No</th>
+              <th className="px-4 py-2 border border-gray-300">Date of Deposit</th>
+              <th className="px-4 py-2 border border-gray-300">Amount</th>
+              <th className="px-4 py-2 border border-gray-300">Maturity Value</th>
+              <th className="px-4 py-2 border border-gray-300">Maturity Date</th>
+              <th className="px-4 py-2 border border-gray-300">Duration</th>
+              <th className="px-4 py-2 border border-gray-300">Int Rate %</th>
+              <th className="px-4 py-2 border border-gray-300">Interest Amount</th>
+              <th className="px-4 py-2 border border-gray-300">Bank</th>
+              <th className="px-4 py-2 border border-gray-300">Bank Remarks</th>
             </tr>
           </thead>
           <tbody>
             {filteredFdrs.map((fdr, index) => (
-              <tr key={index}>
-                <td className="px-4 py-2 border-b">{index + 1}</td>
-                <td className="px-4 py-2 border-b">{fdr.fdrNo}</td>
-                <td className="px-4 py-2 border-b">{new Date(fdr.dateOfDeposit).toLocaleDateString("en-GB")}</td>
-                <td className="px-4 py-2 border-b text-right">{fdr.amount.toLocaleString()}</td>
-                <td className="px-4 py-2 border-b text-right">{fdr.maturityValue.toLocaleString()}</td>
-                <td className="px-4 py-2 border-b text-center">{new Date(fdr.maturityDate).toLocaleDateString("en-GB")}</td>
-                <td className="px-4 py-2 border-b text-center">{fdr.duration}</td>
-                <td className="px-4 py-2 border-b text-right">{fdr.intRate}%</td>
-                <td className="px-4 py-2 border-b text-right">{fdr.interestAmount.toLocaleString()}</td>
-                <td className="px-4 py-2 border-b text-center">{fdr.bank}</td>
-                <td className="px-4 py-2 border-b text-center">
-                  {/* Displaying "Matured" or "Not Matured" based on maturity date */}
-                  {isMatured(fdr.maturityDate) ? (
-                    <span className="text-green-500">Matured</span>
-                  ) : (
-                    <span className="text-red-500">Not Matured</span>
-                  )}
+              <tr key={index} className={index % 2 === 0 ? 'bg-violet-50' : 'bg-white'}>
+                <td className="px-4 py-2 border border-gray-300 text-center">{index + 1}</td>
+                <td className="px-4 py-2 border border-gray-300">{fdr.fdrNo}</td>
+                <td className="px-4 py-2 border border-gray-300 text-center">
+                  {new Date(fdr.dateOfDeposit).toLocaleDateString("en-GB")}
                 </td>
-                <td className="px-4 py-2 border-b">
+                <td className="px-4 py-2 border border-gray-300 text-right">
+                  {fdr.amount.toLocaleString()}
+                </td>
+                <td className="px-4 py-2 border border-gray-300 text-right">
+                  {fdr.maturityValue.toLocaleString()}
+                </td>
+                <td className="px-4 py-2 border border-gray-300 text-center">
+                  {new Date(fdr.maturityDate).toLocaleDateString("en-GB")}
+                </td>
+                <td className="px-4 py-2 border border-gray-300 text-center">{fdr.duration}</td>
+                <td className="px-4 py-2 border border-gray-300 text-right">{fdr.intRate}%</td>
+                <td className="px-4 py-2 border border-gray-300 text-right">
+                  {fdr.interestAmount.toLocaleString()}
+                </td>
+                <td className="px-4 py-2 border border-gray-300 text-center">{fdr.bank}</td>
+                <td className="px-4 py-2 border border-gray-300">
                   <input
                     type="text"
                     className="w-full px-2 py-1 border border-gray-300 rounded"
+                    placeholder="Enter remarks"
                     value={fdr.remarks}
                     onChange={(e) => handleRemarksChange(fdr.fdrNo, e.target.value)}
                   />
@@ -110,9 +101,9 @@ export default function FDRPage() {
             ))}
           </tbody>
         </table>
+        <FDRForm/>
       </div>
-
-      <FDRForm /> {/* Your form to add new FDR */}
     </div>
+  </>
   );
 }

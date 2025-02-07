@@ -1,5 +1,5 @@
 import { useContext, useState, useEffect } from "react";
-import Header from "../components/Header";
+import Header from "../components/Header"; // This line already exists in your code
 import { AppContext } from "../AppContext/ContextProvider";
 import ReceiptForm from "../components/ReceiptForm";
 import axios from 'axios';
