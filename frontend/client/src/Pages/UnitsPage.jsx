@@ -29,9 +29,9 @@ const UnitsPage = () => {
     : [];
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="w-full h-full p-6 bg-gradient-to-r from-teal-100 to-violet-100 font-serif">
       <Header />
-      <h1 className="text-3xl font-bold mb-4">Units Page</h1>
+      <h1 className="text-3xl mb-4 text-purple-700">Units Page</h1>
       <UnitForm/>
       <div className="flex justify-between items-center mb-4">
         <input
