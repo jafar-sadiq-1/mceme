@@ -1,68 +1,75 @@
 const mongoose = require('mongoose');
 
-// Receipt Schema
 const receiptSchema = new mongoose.Schema(
   {
-    rv: { type: String, required: true }, // RV as String
-    rvNo: { 
-      type: Number,
-      required: function() {
-        return this.rv !== 'BBF'; // rvNo is required only when rv is not BBF
-      }
-    },
     date: { type: Date, required: true },
+    voucherType: { type: String, required: true },
+    voucherNo: { type: Number, required: true },
     particulars: { type: String, required: true },
+    customParticulars: { type: String },
+    receiptType: { type: String, required: true },
+    customReceiptType: { type: String },
+    method: { type: String },
+    receiptDescription: { type: String },
     cash: { type: Number, default: 0 },
     bank: { type: Number, default: 0 },
     fdr: { type: Number, default: 0 },
-    syDr: { type: Number, default: 0 },
-    syCr: { type: Number, default: 0 },
+    sydr: { type: Number, default: 0 },
+    sycr: { type: Number, default: 0 },
     property: { type: Number, default: 0 },
-    emeJournalFund: { type: Number, default: 0 },
-    year: { type: Number },
-    month: { type: String },
+    eme_journal_fund: { type: Number, default: 0 },
+    financialYear: { 
+      type: String, 
+      required: true,
+      validate: {
+        validator: function(v) {
+          return /^FY\d{4}-\d{4}$/.test(v);
+        },
+        message: props => `${props.value} is not a valid financial year format (FY2024-2025)!`
+      }
+    },
+    month: { type: String }
   },
   { timestamps: true }
 );
 
-// Ensure indexes are properly created
+// Middleware to set financial year and month before saving
 receiptSchema.pre('save', function (next) {
   const receipt = this;
-  
-  // Set year and month based on the date
   const date = new Date(receipt.date);
-  receipt.year = date.getFullYear();
+  const month = date.getMonth() + 1; // 1-12
+  const year = date.getFullYear();
+  
+  // Set financial year based on April-March cycle
+  const startYear = month <= 3 ? year - 1 : year;
+  receipt.financialYear = `FY${startYear}-${startYear + 1}`;
   receipt.month = date.toLocaleString('default', { month: 'long' });
   
   next();
 });
 
-// Create and export the Receipt model
-const Receipt = mongoose.model('Receipt', receiptSchema);
-
-// Function to initialize indexes
-async function initializeIndexes() {
-  try {
-    // Drop all existing indexes except _id
-    await Receipt.collection.dropIndexes();
+// Update middleware to handle updates
+receiptSchema.pre(['updateOne', 'findOneAndUpdate'], function(next) {
+  const update = this.getUpdate();
+  if (update.date) {
+    const date = new Date(update.date);
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    const startYear = month <= 3 ? year - 1 : year;
     
-    // Create the new compound index
-    await Receipt.collection.createIndex(
-      { year: 1, rv: 1, rvNo: 1 },
-      { 
-        unique: true,
-        name: 'unique_year_rv_rvno',
-        background: true,
-        partialFilterExpression: { rvNo: { $exists: true } } // Match the payments model exactly
-      }
-    );
-    console.log('Indexes recreated successfully');
-  } catch (error) {
-    console.error('Error initializing indexes:', error);
+    update.financialYear = `FY${startYear}-${startYear + 1}`;
+    update.month = date.toLocaleString('default', { month: 'long' });
   }
-}
+  next();
+});
 
-// Initialize indexes when the model is first loaded
-initializeIndexes();
+// Compound index on voucherType and voucherNo within each financial year
+receiptSchema.index(
+  { voucherType: 1, voucherNo: 1, financialYear: 1 },
+  { 
+    unique: true,
+    name: 'unique_voucher_index'
+  }
+);
 
-module.exports = Receipt;
+module.exports = receiptSchema;

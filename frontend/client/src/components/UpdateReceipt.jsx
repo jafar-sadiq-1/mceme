@@ -1,45 +1,48 @@
 import React, { useContext } from 'react';
 import axios from 'axios';
 import { AppContext } from '../AppContext/ContextProvider';
+import { getFinancialYear } from '../utils/financialYearHelper';
 
 const UpdateReceipt = ({ newReceipt, onSuccess }) => {
-
   const { setReceipts } = useContext(AppContext);
 
   const handleUpdateReceipt = async () => {
     try {
-      // Extract year and month from the date field
-      const date = new Date(newReceipt.date);
-      const year = date.getFullYear();
-      const month = date.toLocaleString('default', { month: 'long' });
+      const financialYear = getFinancialYear(newReceipt.date);
 
       const updatedReceipt = {
-        year,
-        month,
-        rv: newReceipt.rv,
-        rvNo: newReceipt.rvNo,
-        date: newReceipt.date,
-        particulars: newReceipt.particulars,
-        cash: newReceipt.cash,
-        bank: newReceipt.bank,
-        fdr: newReceipt.fdr,
-        syDr: newReceipt.syDr,
-        syCr: newReceipt.syCr,
-        property: newReceipt.property,
-        emeJournalFund: newReceipt.emeJournalFund,
+        ...newReceipt,
+        financialYear,
+        date: new Date(newReceipt.date).toISOString(),
+        receiptType: newReceipt.receiptType === "Custom" 
+          ? newReceipt.customReceiptType 
+          : newReceipt.receiptType,
+        particulars: newReceipt.particulars === "Custom" 
+          ? newReceipt.customParticulars 
+          : newReceipt.particulars,
+        // Ensure numeric fields are numbers
+        voucherNo: Number(newReceipt.voucherNo),
+        cash: Number(newReceipt.cash || 0),
+        bank: Number(newReceipt.bank || 0),
+        fdr: Number(newReceipt.fdr || 0),
+        sydr: Number(newReceipt.sydr || 0),
+        sycr: Number(newReceipt.sycr || 0),
+        property: Number(newReceipt.property || 0),
+        eme_journal_fund: Number(newReceipt.eme_journal_fund || 0)
       };
 
-      // Update the receipt
-      await axios.put('http://localhost:5000/api/receipts', updatedReceipt);
+      console.log('Sending update data:', updatedReceipt); // Debug log
+
+      const response = await axios.put(
+        `http://localhost:5000/api/receipts?year=${financialYear}`, 
+        updatedReceipt
+      );
       
-      // Refresh the receipts list
-      const response = await axios.get("http://localhost:5000/api/receipts");
-      setReceipts(response.data);
-      
-      // Reset the form
+      console.log('Update response:', response.data); // Debug log
       onSuccess();
     } catch (error) {
-      console.error("Error updating receipt:", error);
+      console.error("Full error details:", error.response?.data);
+      throw new Error(error.response?.data?.message || "Error updating receipt");
     }
   };
 

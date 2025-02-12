@@ -2,7 +2,7 @@ import React, { useState, createContext } from 'react';
 
 export const AppContext = createContext();
 
-const ContextProvider = ({ children }) => {  // ✅ Destructure children
+const ContextProvider = ({ children }) => {  // Destructure children
   const [units,setUnits] = useState([]);
   const [fdrs,setFdrs] = useState([
     {

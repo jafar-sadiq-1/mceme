@@ -1,34 +1,57 @@
 import React, { useContext, useState } from 'react';
 import axios from 'axios';
 import { AppContext } from '../AppContext/ContextProvider';
+import { getFinancialYear } from '../utils/financialYearHelper';
 
 const AddReceipt = ({ newReceipt, onSuccess, validateForm }) => {
   const { setReceipts } = useContext(AppContext);
   const [error, setError] = useState("");
   
-  // Function to handle adding receipt
   const handleAddReceipt = async () => {
     try {
-      // Clear any previous errors
       setError("");
-
-      // Validate the form first
+      
       if (!validateForm()) {
         return;
       }
+
+      const financialYear = getFinancialYear(newReceipt.date);
+      const receiptData = {
+        ...newReceipt,
+        financialYear,
+        date: new Date(newReceipt.date).toISOString(),
+        receiptType: newReceipt.receiptType === "Custom" 
+          ? newReceipt.customReceiptType 
+          : newReceipt.receiptType,
+        particulars: newReceipt.particulars === "Custom" 
+          ? newReceipt.customParticulars 
+          : newReceipt.particulars,
+        // Ensure numeric fields are numbers
+        voucherNo: Number(newReceipt.voucherNo),
+        cash: Number(newReceipt.cash || 0),
+        bank: Number(newReceipt.bank || 0),
+        fdr: Number(newReceipt.fdr || 0),
+        sydr: Number(newReceipt.sydr || 0),
+        sycr: Number(newReceipt.sycr || 0),
+        property: Number(newReceipt.property || 0),
+        eme_journal_fund: Number(newReceipt.eme_journal_fund || 0)
+      };
+
+      console.log('Sending receipt data:', receiptData); // Add this line for debugging
       
-      await axios.post("http://localhost:5000/api/receipts", newReceipt);
+      const response = await axios.post(
+        `http://localhost:5000/api/receipts?year=${financialYear}`, 
+        receiptData
+      );
       
-      // Refresh the receipts list
-      const response = await axios.get("http://localhost:5000/api/receipts");
-      setReceipts(response.data);
-      
-      // Reset the form
+      console.log('Server response:', response.data); // Add this line for debugging
       onSuccess();
     } catch (error) {
-      const errorMessage = error.response?.data?.message || "Error adding receipt";
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          "Error adding receipt";
       setError(errorMessage);
-      console.error("Error adding receipt:", errorMessage);
+      console.error("Full error details:", error.response?.data); // Add this line for debugging
     }
   };
 

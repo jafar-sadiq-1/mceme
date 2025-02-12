@@ -1,67 +1,135 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import AddReceipt from './AddReceipt';
 import UpdateReceipt from './UpdateReceipt';
 import DeleteReceipt from './DeleteReceipt';
-
+import { AppContext } from '../AppContext/ContextProvider';
 const ReceiptForm = () => {
   const initialState = {
-    date: "",
-    rv: "RV",
-    rvNo: "",
+    date: "",  
+    voucherType: "RV",
+    voucherNo: 0,
     particulars: "",
     customParticulars: "",
-    cash: "",
-    bank: "",
-    fdr: "",
-    syDr: "",
-    syCr: "",
-    property: "",
-    emeJournalFund: "",
+    receiptType: "",
+    customReceiptType: "",
+    method: "",
+    receiptDescription: "",  // Make sure this is present
+    cash: 0,
+    bank: 0,
+    fdr: 0,
+    sydr: 0,
+    sycr: 0,
+    property: 0,
+    eme_journal_fund: 0
   };
 
+  const receiptTypeOptions = [
+    "Interest from Bank",
+    "UCS Amount",
+    "Lifetime Subscriptions",
+    "Property on Charge",
+    "Matured FD",
+    "Interest on FD",
+    "Custom"
+  ];
+
+  const { receipts , setReceipts } = useContext(AppContext);
   const [newReceipt, setNewReceipt] = useState(initialState);
   const [isCustomSelected, setIsCustomSelected] = useState(false);
   const [error, setError] = useState(null);
 
+  
+
+  const validateForm = () => {
+    if (newReceipt.date==null) {
+      setError("Date is required");
+      return false;
+    }
+    if (!newReceipt.particulars) {
+      setError("Particulars is required");
+      return false; 
+    }
+    if (!newReceipt.voucherNo) {
+      setError("Voucher number is required");
+      return false;
+    }
+    setError(null);
+    return true;
+  };
+
   const particularsOptions = [
-    "Option 1",
-    "Option 2",
-    "Option 3",
-    "Option 4",
+    "Unit 1",
+    "Unit 2",
+    "Unit 3",
+    "Unit 4",
     "Custom"
   ];
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
-    if (name === "particulars") {
-      if (value === "Custom") {
+
+    if (name === "voucherNo") {
+      // Convert string to number for voucherNo
+      setNewReceipt(prev => ({
+          ...prev,
+          [name]: parseInt(value) || 0
+      }));
+      return;
+    }
+
+    if (name === "receiptDescription") {
+      setNewReceipt(prev => ({
+          ...prev,
+          receiptDescription: value
+      }));
+      return;
+   }
+
+  if(name === "particulars") {
+    if (value === "Custom") {
         setIsCustomSelected(true);
         setNewReceipt((prev) => ({
-          ...prev,
-          particulars: prev.customParticulars || "",
-          customParticulars: prev.customParticulars || ""
+            ...prev,
+            customParticulars: ""
+        }));
+    } else {
+        setIsCustomSelected(false);
+    }
+  }
+
+    // Add handling for receipt type
+    if (name === "receiptType") {
+        if (value !== "Custom") {
+            setNewReceipt((prev) => ({
+                ...prev,
+                receiptType: value,
+                customReceiptType: ""
+            }));
+        } else {
+            setNewReceipt((prev) => ({
+                ...prev,
+                receiptType: value
+            }));
+        }
+    }
+
+    // Handling method selection to show the relevant amount field
+    const paymentMethods = ["cash", "bank", "fdr", "syDr", "syCr", "property", "emeJournalFund"];
+
+    if (paymentMethods.includes(name)) {
+        // Convert string value to number directly without using toFixed
+        const numericValue = Math.round(parseFloat(value) * 100) / 100 || 0;
+        setNewReceipt((prev) => ({
+            ...prev,
+            [name]: numericValue,
+            selectedMethod: name
         }));
       } else {
-        setIsCustomSelected(false);
-        setNewReceipt((prev) => ({
-          ...prev,
-          particulars: value,
-          customParticulars: ""
-        }));
+          setNewReceipt((prev) => ({
+              ...prev,
+              [name]: value
+          }));
       }
-    } else if (name === "customParticulars") {
-      setNewReceipt((prev) => ({
-        ...prev,
-        customParticulars: value,
-        particulars: value
-      }));
-    } else {
-      setNewReceipt((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
-    }
   };
 
   const resetForm = () => {
@@ -70,21 +138,11 @@ const ReceiptForm = () => {
     setError(null);
   };
 
-  const validateForm = () => {
-    if (!newReceipt.date) {
-      setError("Date is required");
-      return false;
-    }
-    if (!newReceipt.particulars) {
-      setError("Particulars is required");
-      return false;
-    }
-    if (newReceipt.rv !== "BBF" && !newReceipt.rvNo) {
-      setError("RV number is required");
-      return false;
-    }
-    setError(null);
-    return true;
+  const handleAddReceipt = () => {
+    if (!validateForm()) return;
+
+    setReceipts((prevReceipts) => [...prevReceipts, newReceipt]); // Add new receipt
+    resetForm();
   };
 
   return (
@@ -102,142 +160,108 @@ const ReceiptForm = () => {
           />
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-1">RV:</label>
-          <div className="flex space-x-2">
-            <select
-              name="rv"
-              value={newReceipt.rv}
-              onChange={handleInputChange}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2"
-            >
-              <option value="RV">RV</option>
-              <option value="CE RV">CE RV</option>
-              <option value="BBF">BBF</option>
-            </select>
+          <label className="block text-gray-700 font-medium mb-1">Voucher Type:</label>
+          <select name="voucherType" value={newReceipt.voucherType} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg px-4 py-2">
+            <option value="RV">RV</option>
+            <option value="CE PV">CE PV</option>
+          </select>
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Voucher Number:</label>
             <input
-              type="text"
-              name="rvNo"
-              value={newReceipt.rvNo}
+              type="number"
+              name="voucherNo"
+              value={newReceipt.voucherNo || ""}
               onChange={handleInputChange}
-              placeholder={
-                newReceipt.rv === "BBF" ? "" : `Enter ${newReceipt.rv} number`
-              }
+              placeholder="Enter Voucher Number"
               className="w-full border border-gray-300 rounded-lg px-4 py-2"
-              disabled={newReceipt.rv === "BBF"}
             />
           </div>
         </div>
         <div>
           <label className="block text-gray-700 font-medium mb-1">Particulars:</label>
-          <div className="flex space-x-2">
-            <select
-              name="particulars"
-              value={isCustomSelected ? "Custom" : newReceipt.particulars}
+          <select
+            name="particulars"
+            value={newReceipt.particulars}
+            onChange={handleInputChange}
+            className="w-1/2 border border-gray-300 rounded-lg px-4 py-2"
+          >
+            <option value="">Select Particulars</option>
+            {particularsOptions.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+          {isCustomSelected && (
+            <input
+              type="text"
+              name="customParticulars"
+              value={newReceipt.customParticulars}
+              onChange={handleInputChange}
+              placeholder="Enter custom particulars"
+              className="w-1/2 border border-gray-300 rounded-lg px-4 py-2"
+            />
+          )}
+        </div>
+        <div>
+          <label className="block text-gray-700 font-medium mb-1">Receipt Type:</label>
+          <select
+              name="receiptType"
+              value={newReceipt.receiptType}
               onChange={handleInputChange}
               className="w-full border border-gray-300 rounded-lg px-4 py-2"
-            >
-              <option value="">Select Particulars</option>
-              {particularsOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
+          >
+              <option value="">Select Receipt Type</option>
+              {receiptTypeOptions.map((option) => (
+                  <option key={option} value={option}>{option}</option>
               ))}
-            </select>
-            {isCustomSelected && (
+          </select>
+          {newReceipt.receiptType === "Custom" && (
               <input
-                type="text"
-                name="customParticulars"
-                value={newReceipt.customParticulars}
-                onChange={handleInputChange}
-                placeholder="Enter custom particulars"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  type="text"
+                  name="customReceiptType"
+                  value={newReceipt.customReceiptType}
+                  onChange={handleInputChange}
+                  placeholder="Enter custom receipt type"
+                  className="mt-2 w-full border border-gray-300 rounded-lg px-4 py-2"
               />
-            )}
+          )}
+        </div>
+        <div>
+          <label className="block text-gray-700 font-medium mb-1">Method:</label>
+          <select name="method" value={newReceipt.method} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg px-4 py-2">
+            <option value="">Select Type</option>
+            <option value="none">None</option>
+            <option value="cash">Cash</option>
+            <option value="bank">Bank</option>
+            <option value="fdr">FDR</option>
+            <option value="sydr">SYDR</option>
+            <option value="sycr">SY CR</option>
+            <option value="property">Property</option>
+            <option value="eme_journal_fund">EME Journal Fund</option>
+          </select>
+        </div>
+        {(newReceipt.method === 'cash' || newReceipt.method === 'bank' || newReceipt.method === 'fdr' || newReceipt.method === 'sydr' || newReceipt.method === 'sycr' || newReceipt.method === 'property' || newReceipt.method === 'eme_journal_fund') && (
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Amount:</label>
+            <input type="number" step="1" name={newReceipt.method} value={newReceipt[newReceipt.method]||""} onChange={handleInputChange} placeholder="Enter Amount" className="w-full border border-gray-300 rounded-lg px-4 py-2" />
           </div>
-        </div>
+        )}
         <div>
-          <label className="block text-gray-700 font-medium mb-1">Cash:</label>
-          <input
-            type="number"
-            name="cash"
-            value={newReceipt.cash}
-            onChange={handleInputChange}
-            placeholder="Enter cash amount"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
+            <label className="block text-gray-700 font-medium mb-1">Receipt Description:</label>
+            <input
+                type="text"
+                name="receiptDescription"
+                value={newReceipt.receiptDescription}
+                onChange={handleInputChange}
+                placeholder="Enter Receipt Description"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2"
+            />
         </div>
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Bank:</label>
-          <input
-            type="number"
-            name="bank"
-            value={newReceipt.bank}
-            onChange={handleInputChange}
-            placeholder="Enter bank amount"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">FDR:</label>
-          <input
-            type="number"
-            name="fdr"
-            value={newReceipt.fdr}
-            onChange={handleInputChange}
-            placeholder="Enter FDR amount"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Sy Dr:</label>
-          <input
-            type="number"
-            name="syDr"
-            value={newReceipt.syDr}
-            onChange={handleInputChange}
-            placeholder="Enter Sy Dr amount"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Sy Cr:</label>
-          <input
-            type="number"
-            name="syCr"
-            value={newReceipt.syCr}
-            onChange={handleInputChange}
-            placeholder="Enter Sy Cr amount"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Property:</label>
-          <input
-            type="number"
-            name="property"
-            value={newReceipt.property}
-            onChange={handleInputChange}
-            placeholder="Enter Property amount"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">EME Journal Fund:</label>
-          <input
-            type="number"
-            name="emeJournalFund"
-            value={newReceipt.emeJournalFund}
-            onChange={handleInputChange}
-            placeholder="Enter EME Journal Fund amount"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-        </div>
+
         <div className="flex space-x-4 mt-4">
           <AddReceipt 
             newReceipt={newReceipt} 
             onSuccess={() => {
               resetForm();
-              // You can add a success message here if needed
             }}
             validateForm={validateForm}
           />
@@ -245,17 +269,13 @@ const ReceiptForm = () => {
             newReceipt={newReceipt}
             onSuccess={() => {
               resetForm();
-              // You can add a success message here if needed
             }}
             validateForm={validateForm}
           />
           <DeleteReceipt 
-            year={new Date(newReceipt.date).getFullYear()}
-            rv={newReceipt.rv}
-            rvNo={newReceipt.rvNo}
+            newReceipt={newReceipt}
             onSuccess={() => {
               resetForm();
-              // You can add a success message here if needed
             }}
             validateForm={validateForm}
           />

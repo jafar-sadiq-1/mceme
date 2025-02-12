@@ -1,142 +1,165 @@
 const express = require("express");
 const router = express.Router();
-const Receipt = require("../models/Receipts");
+const receiptSchema = require("../models/Receipts");
+const { getConnection } = require("../config/dbManager");
 
-// @route   GET /api/receipts
-// @desc    Get receipts (filtered by year and month if provided)
-router.get("/", async (req, res) => {
+// Middleware to setup database connection based on financial year
+const setupDbConnection = async (req, res, next) => {
   try {
-    const { year, month } = req.query;
-    let filter = {};
+    // Get financial year from query params, request body, or calculate from date
+    let financialYear;
+    
+    if (req.query.year) {
+      financialYear = req.query.year;
+    } else if (req.body.financialYear) {
+      financialYear = req.body.financialYear;
+    } else if (req.body.date) {
+      const date = new Date(req.body.date);
+      const month = date.getMonth() + 1;
+      const year = date.getFullYear();
+      const startYear = month <= 3 ? year - 1 : year;
+      financialYear = `FY${startYear}-${startYear + 1}`;
+    }
 
-    if (year) filter.year = parseInt(year);
-    if (month) filter.month = month;
+    if (!financialYear) {
+      return res.status(400).json({ message: "Financial year is required" });
+    }
 
-    const receipts = await Receipt.find(filter).sort({ date: -1 });
-    res.json(receipts);
+    // Get connection for the specific financial year
+    const connection = await getConnection(financialYear);
+    req.ReceiptModel = connection.model('Receipt', receiptSchema);
+    next();
   } catch (error) {
-    console.error("Error fetching receipts:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Database connection error", error: error.message });
   }
-});
+};
 
+// Apply middleware to all routes
+router.use(setupDbConnection);
+
+// POST route for adding new receipt
 router.post("/", async (req, res) => {
+  console.log("Received request body:", req.body);  // Add this line for debugging
   try {
-    // Destructure fields from the request body
-    const { rv, rvNo, date, particulars, cash, bank, fdr, syDr, syCr, property, emeJournalFund } = req.body;
+    const {
+      date,
+      voucherType,
+      voucherNo,
+      particulars,
+      customParticulars,
+      receiptType,
+      customReceiptType,
+      method,
+      receiptDescription,
+      cash,
+      bank,
+      fdr,
+      sydr,
+      sycr,
+      property,
+      eme_journal_fund,
+      financialYear
+    } = req.body;
 
-    // Check for required rvNo when rv is not BBF
-    if (rv !== 'BBF' && !rvNo) {
+    // Validate required fields
+    if (!date || !voucherType || !voucherNo) {
       return res.status(400).json({ 
-        message: "RV Number is required for non-BBF entries" 
+        message: "Required fields missing",
+        required: ['date', 'voucherType', 'voucherNo']
       });
     }
 
-    // Create a new receipt
-    const newReceipt = new Receipt({
-      rv,
-      rvNo: Number(rvNo), // Ensure rvNo is a number
-      date,
-      particulars,
+    // Create new receipt
+    const newReceipt = new req.ReceiptModel({
+      date: new Date(date),
+      voucherType,
+      voucherNo: Number(voucherNo),
+      particulars: particulars || customParticulars,
+      receiptType: receiptType || customReceiptType,
+      method,
+      receiptDescription,
       cash: Number(cash) || 0,
       bank: Number(bank) || 0,
       fdr: Number(fdr) || 0,
-      syDr: Number(syDr) || 0,
-      syCr: Number(syCr) || 0,
+      sydr: Number(sydr) || 0,
+      sycr: Number(sycr) || 0,
       property: Number(property) || 0,
-      emeJournalFund: Number(emeJournalFund) || 0
+      eme_journal_fund: Number(eme_journal_fund) || 0,
+      financialYear
     });
 
-    // Save the receipt to the database
-    try {
-      await newReceipt.save();
-      
-      // Send success response
-      res.status(201).json({
-        message: "Receipt created successfully",
-        receipt: newReceipt
-      });
-    } catch (saveError) {
-      console.error("Save Error Details:", {
-        code: saveError.code,
-        keyPattern: saveError.keyPattern,
-        keyValue: saveError.keyValue
-      });
-
-      if (saveError.code === 11000) {
-        const keyValue = saveError.keyValue || {};
-        return res.status(400).json({ 
-          message: `A receipt with RV type ${keyValue.rv || rv} and number ${keyValue.rvNo || rvNo} already exists for year ${keyValue.year || new Date(date).getFullYear()}`
-        });
-      }
-      throw saveError;
-    }
-  } catch (error) {
-    console.error("Route Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message,
-      details: error.code === 11000 ? error.keyValue : undefined
-    });
-  }
-});
-
-// @route   DELETE /api/receipts
-// @desc    Delete a receipt based on year, rv, and rvNo
-router.delete("/", async (req, res) => {
-  try {
-    const { year, rv, rvNo } = req.query;
-
-    if (!year || !rv || !rvNo) {
-      return res.status(400).json({ message: "Missing required parameters: year, rv, or rvNo" });
-    }
-
-    // Find and delete the receipt matching year, rv, and rvNo
-    const deletedReceipt = await Receipt.findOneAndDelete({ year, rv, rvNo });
-
-    if (!deletedReceipt) {
-      return res.status(404).json({ message: "Receipt not found" });
-    }
-
-    res.status(200).json({
-      message: "Receipt deleted successfully",
-      receipt: deletedReceipt,
-    });
-  } catch (error) {
-    console.error("Error deleting receipt:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-router.put('/', async (req, res) => {
-  try {
-    const { year, rv, rvNo, ...updateData } = req.body;
+    console.log("Attempting to save receipt:", newReceipt); // Add this line for debugging
+    const savedReceipt = await newReceipt.save();
+    console.log("Receipt saved successfully:", savedReceipt); // Add this line for debugging
     
-    // Find the receipt to update
-    const receipt = await Receipt.findOne({ year, rv, rvNo });
+    res.status(201).json({ message: "Receipt created successfully", receipt: savedReceipt });
+  } catch (error) {
+    console.error("Detailed error:", error); // Add this line for debugging
+    res.status(500).json({ 
+      message: "Error creating receipt", 
+      error: error.message,
+      stack: error.stack 
+    });
+  }
+});
+
+// PUT route for updating receipt
+router.put("/", async (req, res) => {
+  try {
+    const { voucherType, voucherNo, ...updateData } = req.body;
+    
+    const receipt = await req.ReceiptModel.findOneAndUpdate(
+      { voucherType, voucherNo },
+      updateData,
+      { new: true, runValidators: true }
+    );
 
     if (!receipt) {
       return res.status(404).json({ message: 'Receipt not found' });
     }
 
-    // Update the fields
-    Object.keys(updateData).forEach((key) => {
-      if (typeof updateData[key] === 'number') {
-        receipt[key] = Number(updateData[key]) || 0;
-      } else {
-        receipt[key] = updateData[key];
-      }
-    });
-
-    await receipt.save();
-
-    res.json({
-      message: 'Receipt updated successfully',
-      receipt
-    });
+    res.json({ message: 'Receipt updated successfully', receipt });
   } catch (error) {
-    console.error('Error updating receipt:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Error updating receipt', error: error.message });
+  }
+});
+
+// DELETE route
+router.delete("/", async (req, res) => {
+
+  console.log("delete Request");
+
+  try {
+    const { voucherType, voucherNo } = req.query;
+
+    console.log(voucherNo , typeof(voucherNo));
+    
+    const deletedReceipt = await req.ReceiptModel.findOneAndDelete({
+      voucherType,
+      voucherNo
+    });
+
+    if (!deletedReceipt) {
+      return res.status(404).json({ message: "Receipt not found" });
+    }
+
+    res.json({ message: "Receipt deleted successfully", receipt: deletedReceipt });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting receipt", error: error.message });
+  }
+});
+
+// GET route with financial year and month filtering
+router.get("/", async (req, res) => {
+  try {
+    const { month } = req.query;
+    let filter = {};
+    if (month) filter.month = month;
+
+    const receipts = await req.ReceiptModel.find(filter).sort({ date: -1 });
+    res.json(receipts);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching receipts", error: error.message });
   }
 });
 
