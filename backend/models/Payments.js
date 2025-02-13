@@ -1,17 +1,17 @@
 const mongoose = require('mongoose');
 
-// Receipt Schema
+// Payment Schema
 const paymentSchema = new mongoose.Schema(
   {
-    pv: { type: String, required: true }, // RV as String
-    pvNo: { 
-      type: Number,
-      required: function() {
-        return this.pv !== 'BBF'; // pvNo is required only when pv is not BBF
-      }
-    },
     date: { type: Date, required: true },
+    voucherType: { type: String, required: true },
+    voucherNo: { type: Number, required: true },
     particulars: { type: String, required: true },
+    customParticulars: { type: String },
+    paymentType: { type: String, required: true },
+    customPaymentType: { type: String },
+    method: { type: String },
+    paymentDescription: { type: String },
     cash: { type: Number, default: 0 },
     bank: { type: Number, default: 0 },
     fdr: { type: Number, default: 0 },
@@ -19,50 +19,58 @@ const paymentSchema = new mongoose.Schema(
     syCr: { type: Number, default: 0 },
     property: { type: Number, default: 0 },
     emeJournalFund: { type: Number, default: 0 },
-    year: { type: Number },
-    month: { type: String },
+    financialYear: { 
+      type: String, 
+      required: true,
+      validate: {
+        validator: function(v) {
+          return /^FY\d{4}-\d{4}$/.test(v);
+        },
+        message: props => `${props.value} is not a valid financial year format (FY2024-2025)!`
+      }
+    },
+    month: { type: String }
   },
   { timestamps: true }
 );
 
-// Ensure indexes are properly created
+// Middleware to set financial year and month before saving
 paymentSchema.pre('save', function (next) {
   const payment = this;
-  
-  // Set year and month based on the date
   const date = new Date(payment.date);
-  payment.year = date.getFullYear();
+  const month = date.getMonth() + 1; // 1-12
+  const year = date.getFullYear();
+  
+  // Set financial year based on April-March cycle
+  const startYear = month <= 3 ? year - 1 : year;
+  payment.financialYear = `FY${startYear}-${startYear + 1}`;
   payment.month = date.toLocaleString('default', { month: 'long' });
   
   next();
 });
 
-// Create and export the Payment model
-const Payment = mongoose.model('Payment', paymentSchema);
-
-// Function to initialize indexes
-async function initializeIndexes() {
-  try {
-    // Drop all existing indexes except _id
-    await Payment.collection.dropIndexes();
+// Update middleware to handle updates
+paymentSchema.pre(['updateOne', 'findOneAndUpdate'], function(next) {
+  const update = this.getUpdate();
+  if (update.date) {
+    const date = new Date(update.date);
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    const startYear = month <= 3 ? year - 1 : year;
     
-    // Create the new compound index
-    await Payment.collection.createIndex(
-      { year: 1, pv: 1, pvNo: 1 },
-      { 
-        unique: true,
-        name: 'unique_year_pv_pvno',
-        background: true,
-        partialFilterExpression: { pvNo: { $exists: true } } // ✅ Fixed Condition
-      }
-    );
-    console.log('Indexes recreated successfully');
-  } catch (error) {
-    console.error('Error initializing indexes:', error);
+    update.financialYear = `FY${startYear}-${startYear + 1}`;
+    update.month = date.toLocaleString('default', { month: 'long' });
   }
-}
+  next();
+});
 
-// Initialize indexes when the model is first loaded
-initializeIndexes();
+// Compound index on voucherType and voucherNo within each financial year
+paymentSchema.index(
+  { voucherType: 1, voucherNo: 1, financialYear: 1 },
+  { 
+    unique: true,
+    name: 'unique_voucher_index'
+  }
+);
 
-module.exports = Payment;
+module.exports = paymentSchema;

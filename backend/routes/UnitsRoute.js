@@ -4,87 +4,103 @@ const Unit = require("../models/Units");
 
 // Create a New Unit
 router.post("/add", async (req, res) => {
-  console.log(req.body);
   try {
-    // Convert ledgerPageNumber and amount to numbers
-    const ledgerPageNumber = Number(req.body.ledgerPageNumber);
-    const amount = Number(req.body.amount);
-    const { nameOfUnit, command } = req.body;
+    const {
+      ledgerPageNumber,
+      nameOfUnit,
+      amount,
+      command,
+      currentFinancialYear,
+      currentFinancialAmount,
+      lastFinancialYearAmount,
+      unpaidAmount
+    } = req.body;
 
-    // Check if conversion failed (NaN) and return an error
-    if (isNaN(ledgerPageNumber) || isNaN(amount)) {
-      return res.status(400).json({ error: "Invalid input: ledgerPageNumber and amount must be numbers" });
+    // Validate required numeric fields
+    const numericFields = {
+      ledgerPageNumber,
+      amount,
+      currentFinancialAmount,
+      lastFinancialYearAmount,
+      unpaidAmount
+    };
+
+    for (const [field, value] of Object.entries(numericFields)) {
+      const numValue = Number(value);
+      if (isNaN(numValue)) {
+        return res.status(400).json({ error: `Invalid input: ${field} must be a number` });
+      }
     }
 
-    // Create a new unit
-    const newUnit = new Unit({ ledgerPageNumber, nameOfUnit, amount, command });
-    // console.log(newUnit);
+    // Create a new unit with all fields
+    const newUnit = new Unit({
+      ledgerPageNumber: Number(ledgerPageNumber),
+      nameOfUnit,
+      amount: Number(amount),
+      command,
+      currentFinancialYear,
+      currentFinancialAmount: Number(currentFinancialAmount),
+      lastFinancialYearAmount: Number(lastFinancialYearAmount),
+      unpaidAmount: Number(unpaidAmount),
+      history: [] // Initialize empty history array
+    });
 
-    // Save the new unit to the database
     await newUnit.save();
-    // console.log(newUnit);
-
-    // Respond with success
     res.status(201).json({ message: "Unit added successfully!", newUnit });
   } catch (error) {
-    // Handle any errors that occur
     res.status(500).json({ error: "Error adding unit: " + error.message });
   }
 });
-
 
 // Get All Units
 router.get("/", async (req, res) => {
   try {
     const units = await Unit.find();
-    // console.log(units); // Log the data being returned
     res.status(200).json(units);
   } catch (error) {
     res.status(500).json({ error: "Error fetching units: " + error.message });
   }
 });
 
-
-// Update a Unit by unitName
 // Update a Unit by nameOfUnit
 router.put("/update/:nameOfUnit", async (req, res) => {
   try {
-    // Extract data from the request body
-    const ledgerPageNumber = Number(req.body.ledgerPageNumber);
-    const amount = Number(req.body.amount);
-    const { command } = req.body; // Correct field name 'command'
-    const nameOfUnit = req.params.nameOfUnit; // Extract nameOfUnit from URL parameter
+    const {
+      ledgerPageNumber,
+      amount,
+      command,
+      currentFinancialAmount,
+      lastFinancialYearAmount,
+      unpaidAmount
+    } = req.body;
 
-    // console.log(nameOfUnit, typeof(nameOfUnit));
-    // console.log(ledgerPageNumber,typeof(ledgerPageNumber));
-    // console.log(amount,typeof(amount));
-    // console.log(command,typeof(command));
-    // Log the received request body for debugging purposes
-    // console.l/og("Body:",req.body);
+    const nameOfUnit = req.params.nameOfUnit;
 
-    // Perform the update
+    // Create update object with all fields
+    const updateData = {
+      ledgerPageNumber: Number(ledgerPageNumber),
+      amount: Number(amount),
+      command,
+      currentFinancialAmount: Number(currentFinancialAmount),
+      lastFinancialYearAmount: Number(lastFinancialYearAmount),
+      unpaidAmount: Number(unpaidAmount)
+    };
+
     const updatedUnit = await Unit.findOneAndUpdate(
-      { nameOfUnit }, // Find by nameOfUnit instead of unitName
-      { ledgerPageNumber, amount, command }, // Update the unit fields
-      { new: true } // Return the updated document
+      { nameOfUnit },
+      updateData,
+      { new: true, runValidators: true }
     );
 
-    // console.log("Hello",updatedUnit);
-
-    // Check if the unit was found and updated
     if (!updatedUnit) {
       return res.status(404).json({ error: "Unit not found" });
     }
 
-    // Send success response
     res.status(200).json({ message: "Unit updated successfully!", updatedUnit });
   } catch (error) {
-    // Handle errors
     res.status(500).json({ error: "Error updating unit: " + error.message });
   }
 });
-
-
 
 router.delete("/delete/:unitName", async (req, res) => {
   try {
@@ -101,7 +117,5 @@ router.delete("/delete/:unitName", async (req, res) => {
     res.status(500).json({ error: "Error deleting unit: " + error.message });
   }
 });
-
-
 
 module.exports = router;

@@ -163,4 +163,30 @@ router.get("/", async (req, res) => {
   }
 });
 
+// GET last voucher number for a specific type
+router.get("/lastVoucherNo", async (req, res) => {
+  try {
+    const { voucherType } = req.query;
+    
+    if (!voucherType) {
+      return res.status(400).json({ message: "Voucher type is required" });
+    }
+
+    const lastReceipt = await req.ReceiptModel.findOne(
+      { voucherType },
+      { voucherNo: 1 },
+      { sort: { voucherNo: -1 } }
+    );
+
+    res.json({ 
+      lastVoucherNo: lastReceipt ? lastReceipt.voucherNo : 0 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: "Error fetching last voucher number", 
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;

@@ -51,18 +51,24 @@ const UnitsPage = () => {
               <th className="px-4 py-2 border-b">S.No</th>
               <th className="px-4 py-2 border-b">Ledger Pg No</th>
               <th className="px-4 py-2 border-b">Name of Unit</th>
-              <th className="px-4 py-2 border-b">Amount</th>
-              <th className="px-4 py-2 border-b">Comd</th>
+              <th className="px-4 py-2 border-b">Command</th>
+              <th className="px-4 py-2 border-b">Current FY</th>
+              <th className="px-4 py-2 border-b">Current FY Amount</th>
+              <th className="px-4 py-2 border-b">Last FY Amount</th>
+              <th className="px-4 py-2 border-b">Unpaid Amount</th>
             </tr>
           </thead>
           <tbody>
             {filteredUnits.map((unit, index) => (
-              <tr key={index}>
+              <tr key={index} className="hover:bg-gray-50">
                 <td className="px-4 py-2 border-b">{index + 1}</td>
                 <td className="px-4 py-2 border-b">{unit.ledgerPageNumber}</td>
                 <td className="px-4 py-2 border-b">{unit.nameOfUnit}</td>
-                <td className="px-4 py-2 border-b">{unit.amount}</td>
                 <td className="px-4 py-2 border-b">{unit.command}</td>
+                <td className="px-4 py-2 border-b">{unit.currentFinancialYear}</td>
+                <td className="px-4 py-2 border-b text-right">₹{unit.currentFinancialAmount.toLocaleString()}</td>
+                <td className="px-4 py-2 border-b text-right">₹{unit.lastFinancialYearAmount.toLocaleString()}</td>
+                <td className="px-4 py-2 border-b text-right">₹{unit.unpaidAmount.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>

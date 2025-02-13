@@ -5,6 +5,7 @@ const receiptSchema = new mongoose.Schema(
     date: { type: Date, required: true },
     voucherType: { type: String, required: true },
     voucherNo: { type: Number, required: true },
+    counterVoucherNo: { type: Number, default: 0 }, // Added new field
     particulars: { type: String, required: true },
     customParticulars: { type: String },
     receiptType: { type: String, required: true },

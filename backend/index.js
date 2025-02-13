@@ -15,10 +15,8 @@ app.use(bodyParser.json());
 app.use(express.json());
 
 // Connect to MongoDB and start server
-connectDb(process.env.MONGODB_URI)
+connectDb()
   .then(() => {
-    console.log('✅ MongoDB Connected');
-
     // Import Routes
     const UnitsRouter = require('./routes/UnitsRoute');
     const FDRRouter = require('./routes/FDRRoute.js');
@@ -26,12 +24,14 @@ connectDb(process.env.MONGODB_URI)
     const PaymentRouter = require('./routes/PaymentRoute.js');
     const signinRoutes = require('./routes/signin');
     const approvalRoutes = require('./routes/user_approvals');
+    // Removed VouchersRouter import
 
     // Mount routes with prefixes
     app.use('/api/units', UnitsRouter);
     app.use('/api/fdr', FDRRouter);
     app.use('/api/receipts', ReceiptsRouter);
     app.use('/api/payments', PaymentRouter);
+    // Removed VouchersRouter mounting
     app.use(signinRoutes);
     app.use(approvalRoutes);
 

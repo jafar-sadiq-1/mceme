@@ -3,11 +3,15 @@ import AddReceipt from './AddReceipt';
 import UpdateReceipt from './UpdateReceipt';
 import DeleteReceipt from './DeleteReceipt';
 import { AppContext } from '../AppContext/ContextProvider';
+import axios from 'axios';
+import { getFinancialYear } from '../utils/financialYearHelper';
+
 const ReceiptForm = () => {
   const initialState = {
     date: "",  
-    voucherType: "RV",
+    voucherType: "",  // Changed from "RV" to empty string
     voucherNo: 0,
+    counterVoucherNo: 0, // Keep this in state but remove input field
     particulars: "",
     customParticulars: "",
     receiptType: "",
@@ -22,6 +26,12 @@ const ReceiptForm = () => {
     property: 0,
     eme_journal_fund: 0
   };
+
+  // Update voucher type options array to only include RV and CE PV
+  const voucherTypeOptions = [
+    { value: "RV", label: "RV (Receipt Voucher)" },
+    { value: "CE_PV", label: "CE PV (Corps of Engineers Payment Voucher)" }
+  ];
 
   const receiptTypeOptions = [
     "Interest from Bank",
@@ -38,7 +48,30 @@ const ReceiptForm = () => {
   const [isCustomSelected, setIsCustomSelected] = useState(false);
   const [error, setError] = useState(null);
 
-  
+  const fetchLastVoucherNo = async (date, voucherType) => {
+    try {
+      if (!date || !voucherType) return;
+
+      const financialYear = getFinancialYear(date);
+      const response = await axios.get(
+        `http://localhost:5000/api/receipts/lastVoucherNo`, {
+          params: {
+            year: financialYear,
+            voucherType
+          }
+        }
+      );
+
+      const lastVoucherNo = response.data.lastVoucherNo;
+      setNewReceipt(prev => ({
+        ...prev,
+        voucherNo: lastVoucherNo + 1
+      }));
+    } catch (error) {
+      console.error("Error fetching last voucher number:", error);
+      setError("Error fetching last voucher number");
+    }
+  };
 
   const validateForm = () => {
     if (newReceipt.date==null) {
@@ -67,6 +100,23 @@ const ReceiptForm = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    // First update the state with the new value
+    setNewReceipt(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // If date or voucherType changed, check if we can fetch the last voucher number
+    if (name === 'date' || name === 'voucherType') {
+      const updatedDate = name === 'date' ? value : newReceipt.date;
+      const updatedVoucherType = name === 'voucherType' ? value : newReceipt.voucherType;
+      
+      if (updatedDate && updatedVoucherType) {
+        fetchLastVoucherNo(updatedDate, updatedVoucherType);
+      }
+      return;
+    }
 
     if (name === "voucherNo") {
       // Convert string to number for voucherNo
@@ -161,9 +211,18 @@ const ReceiptForm = () => {
         </div>
         <div>
           <label className="block text-gray-700 font-medium mb-1">Voucher Type:</label>
-          <select name="voucherType" value={newReceipt.voucherType} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg px-4 py-2">
-            <option value="RV">RV</option>
-            <option value="CE PV">CE PV</option>
+          <select 
+            name="voucherType" 
+            value={newReceipt.voucherType} 
+            onChange={handleInputChange} 
+            className="w-full border border-gray-300 rounded-lg px-4 py-2"
+          >
+            <option value="">Select Voucher Type</option>
+            {voucherTypeOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
           <div>
             <label className="block text-gray-700 font-medium mb-1">Voucher Number:</label>
@@ -242,7 +301,7 @@ const ReceiptForm = () => {
         {(newReceipt.method === 'cash' || newReceipt.method === 'bank' || newReceipt.method === 'fdr' || newReceipt.method === 'sydr' || newReceipt.method === 'sycr' || newReceipt.method === 'property' || newReceipt.method === 'eme_journal_fund') && (
           <div>
             <label className="block text-gray-700 font-medium mb-1">Amount:</label>
-            <input type="number" step="1" name={newReceipt.method} value={newReceipt[newReceipt.method]||""} onChange={handleInputChange} placeholder="Enter Amount" className="w-full border border-gray-300 rounded-lg px-4 py-2" />
+            <input type="number" name={newReceipt.method} value={newReceipt[newReceipt.method]||""} onChange={handleInputChange} placeholder="Enter Amount" className="w-full border border-gray-300 rounded-lg px-4 py-2" />
           </div>
         )}
         <div>
