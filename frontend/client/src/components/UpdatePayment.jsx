@@ -1,44 +1,48 @@
 import React, { useContext } from 'react';
 import axios from 'axios';
 import { AppContext } from '../AppContext/ContextProvider';
+import { getFinancialYear } from '../utils/financialYearHelper';
 
 const UpdatePayment = ({ newPayment, onSuccess }) => {
   const { setPayments } = useContext(AppContext);
 
   const handleUpdatePayment = async () => {
     try {
-      // Extract year and month from the date field
-      const date = new Date(newPayment.date);
-      const year = date.getFullYear();
-      const month = date.toLocaleString('default', { month: 'long' });
+      const financialYear = getFinancialYear(newPayment.date);
 
       const updatedPayment = {
-        year,
-        month,
-        pv: newPayment.pv,
-        pvNo: newPayment.pvNo,
-        date: newPayment.date,
-        particulars: newPayment.particulars,
-        cash: newPayment.cash,
-        bank: newPayment.bank,
-        fdr: newPayment.fdr,
-        syDr: newPayment.syDr,
-        syCr: newPayment.syCr,
-        property: newPayment.property,
-        emeJournalFund: newPayment.emeJournalFund,
+        ...newPayment,
+        financialYear,
+        date: new Date(newPayment.date).toISOString(),
+        paymentType: newPayment.paymentType === "Custom" 
+          ? newPayment.customPaymentType 
+          : newPayment.paymentType,
+        particulars: newPayment.particulars === "Custom" 
+          ? newPayment.customParticulars 
+          : newPayment.particulars,
+        // Ensure numeric fields are numbers
+        voucherNo: Number(newPayment.voucherNo),
+        cash: Number(newPayment.cash || 0),
+        bank: Number(newPayment.bank || 0),
+        fdr: Number(newPayment.fdr || 0),
+        syDr: Number(newPayment.syDr || 0),
+        syCr: Number(newPayment.syCr || 0),
+        property: Number(newPayment.property || 0),
+        emeJournalFund: Number(newPayment.emeJournalFund || 0)
       };
 
-      // Update the payment
-      await axios.put('http://localhost:5000/api/payments', updatedPayment);
+      console.log('Sending update data:', updatedPayment); // Debug log
+
+      const response = await axios.put(
+        `http://localhost:5000/api/payments?year=${financialYear}`, 
+        updatedPayment
+      );
       
-      // Refresh the payments list
-      const response = await axios.get("http://localhost:5000/api/payments");
-      setPayments(response.data);
-      
-      // Reset the form
+      console.log('Update response:', response.data); // Debug log
       onSuccess();
     } catch (error) {
-      console.error("Error updating payment:", error);
+      console.error("Full error details:", error.response?.data);
+      throw new Error(error.response?.data?.message || "Error updating payment");
     }
   };
 

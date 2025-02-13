@@ -28,7 +28,8 @@ const UpdateReceipt = ({ newReceipt, onSuccess }) => {
         sydr: Number(newReceipt.sydr || 0),
         sycr: Number(newReceipt.sycr || 0),
         property: Number(newReceipt.property || 0),
-        eme_journal_fund: Number(newReceipt.eme_journal_fund || 0)
+        eme_journal_fund: Number(newReceipt.eme_journal_fund || 0),
+        counterVoucherNo: Number(newReceipt.counterVoucherNo || 0)
       };
 
       console.log('Sending update data:', updatedReceipt); // Debug log

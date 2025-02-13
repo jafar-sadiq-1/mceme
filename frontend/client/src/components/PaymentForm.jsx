@@ -6,21 +6,58 @@ import DeletePayment from './DeletePayment';
 const PaymentForm = () => {
   const initialState = {
     date: "",
-    pv: "PV",
-    pvNo: "",
+    voucherType: "PV",
+    voucherNo: "",
     particulars: "",
     customParticulars: "",
-    cash: "",
-    bank: "",
-    fdr: "",
-    syDr: "",
-    syCr: "",
-    property: "",
-    emeJournalFund: "",
+    paymentType: "",
+    customPaymentType: "",
+    method: "",
+    paymentDescription: "",
+    cash: 0,
+    bank: 0,
+    fdr: 0,
+    syDr: 0,
+    syCr: 0,
+    property: 0,
+    emeJournalFund: 0,
   };
+
+  const paymentTypeOptions = [
+    "Bank Adjustment",
+    "Petty Cash Amount",
+    "Petty Cash Expenditure",
+    "Payment for EME Journal",
+    "Purchase",
+    "FD",
+    "Appreciation Amount",
+    "Interest on FD",
+    "Depreciation Amount",
+    "Waveoff",
+    "Bank Charges",
+    "Custom"
+  ];
 
   const [newPayment, setNewPayment] = useState(initialState);
   const [isCustomSelected, setIsCustomSelected] = useState(false);
+  const [error, setError] = useState(null);
+
+  const validateForm = () => {
+    if (!newPayment.date) {
+      setError("Date is required");
+      return false;
+    }
+    if (!newPayment.particulars) {
+      setError("Particulars is required");
+      return false;
+    }
+    if (!newPayment.voucherNo) {
+      setError("Voucher Number is required");
+      return false;
+    }
+    setError(null);
+    return true;
+  };
 
   const particularsOptions = [
     "Option 1",
@@ -32,33 +69,63 @@ const PaymentForm = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
+    if (name === "voucherNo") {
+      setNewPayment(prev => ({
+        ...prev,
+        [name]: parseInt(value) || 0
+      }));
+      return;
+    }
+
+    if (name === "paymentDescription") {
+      setNewPayment(prev => ({
+        ...prev,
+        paymentDescription: value
+      }));
+      return;
+    }
+
     if (name === "particulars") {
       if (value === "Custom") {
         setIsCustomSelected(true);
         setNewPayment((prev) => ({
           ...prev,
-          particulars: prev.customParticulars || "",
-          customParticulars: prev.customParticulars || ""
+          customParticulars: ""
         }));
       } else {
         setIsCustomSelected(false);
+      }
+    }
+
+    if (name === "paymentType") {
+      if (value !== "Custom") {
         setNewPayment((prev) => ({
           ...prev,
-          particulars: value,
-          customParticulars: ""
+          paymentType: value,
+          customPaymentType: ""
+        }));
+      } else {
+        setNewPayment((prev) => ({
+          ...prev,
+          paymentType: value
         }));
       }
-    } else if (name === "customParticulars") {
+    }
+
+    const paymentMethods = ["cash", "bank", "fdr", "syDr", "syCr", "property", "emeJournalFund"];
+
+    if (paymentMethods.includes(name)) {
+      const numericValue = Math.round(parseFloat(value) * 100) / 100 || 0;
       setNewPayment((prev) => ({
         ...prev,
-        customParticulars: value,
-        particulars: value
+        [name]: numericValue,
+        selectedMethod: name
       }));
     } else {
       setNewPayment((prev) => ({
         ...prev,
-        [name]: value,
+        [name]: value
       }));
     }
   };
@@ -66,6 +133,7 @@ const PaymentForm = () => {
   const resetForm = () => {
     setNewPayment(initialState);
     setIsCustomSelected(false);
+    setError(null);
   };
 
   return (
@@ -86,25 +154,21 @@ const PaymentForm = () => {
           <label className="block text-gray-700 font-medium mb-1">PV:</label>
           <div className="flex space-x-2">
             <select
-              name="pv"
-              value={newPayment.pv}
+              name="voucherType"
+              value={newPayment.voucherType}
               onChange={handleInputChange}
               className="w-full border border-gray-300 rounded-lg px-4 py-2"
             >
               <option value="PV">PV</option>
               <option value="CE RV">CE RV</option>
-              <option value="BBF">BBF</option>
             </select>
             <input
               type="text"
-              name="pvNo"
-              value={newPayment.pvNo}
+              name="voucherNo"
+              value={newPayment.voucherNo}
               onChange={handleInputChange}
-              placeholder={
-                newPayment.pv === "BBF" ? "" : `Enter ${newPayment.pv} number`
-              }
+              placeholder={`Enter ${newPayment.voucherType} number`}
               className="w-full border border-gray-300 rounded-lg px-4 py-2"
-              disabled={newPayment.pv === "BBF"}
             />
           </div>
         </div>
@@ -137,91 +201,75 @@ const PaymentForm = () => {
           </div>
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-1">Cash:</label>
-          <input
-            type="number"
-            name="cash"
-            value={newPayment.cash}
+          <label className="block text-gray-700 font-medium mb-1">Payment Type:</label>
+          <select
+            name="paymentType"
+            value={newPayment.paymentType}
             onChange={handleInputChange}
-            placeholder="Enter cash amount"
             className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
+          >
+            <option value="">Select Payment Type</option>
+            {paymentTypeOptions.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+          {newPayment.paymentType === "Custom" && (
+            <input
+              type="text"
+              name="customPaymentType"
+              value={newPayment.customPaymentType}
+              onChange={handleInputChange}
+              placeholder="Enter custom payment type"
+              className="mt-2 w-full border border-gray-300 rounded-lg px-4 py-2"
+            />
+          )}
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-1">Bank:</label>
-          <input
-            type="number"
-            name="bank"
-            value={newPayment.bank}
-            onChange={handleInputChange}
-            placeholder="Enter bank amount"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
+          <label className="block text-gray-700 font-medium mb-1">Method:</label>
+          <select name="method" value={newPayment.method} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg px-4 py-2">
+            <option value="">Select Type</option>
+            <option value="none">None</option>
+            <option value="cash">Cash</option>
+            <option value="bank">Bank</option>
+            <option value="fdr">FDR</option>
+            <option value="syDr">SYDR</option>
+            <option value="syCr">SY CR</option>
+            <option value="property">Property</option>
+            <option value="emeJournalFund">EME Journal Fund</option>
+          </select>
         </div>
+        {(newPayment.method === 'cash' || newPayment.method === 'bank' || newPayment.method === 'fdr' || newPayment.method === 'syDr' || newPayment.method === 'syCr' || newPayment.method === 'property' || newPayment.method === 'emeJournalFund') && (
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Amount:</label>
+            <input type="number" name={newPayment.method} value={newPayment[newPayment.method]||""} onChange={handleInputChange} placeholder="Enter Amount" className="w-full border border-gray-300 rounded-lg px-4 py-2" />
+          </div>
+        )}
         <div>
-          <label className="block text-gray-700 font-medium mb-1">FDR:</label>
+          <label className="block text-gray-700 font-medium mb-1">Payment Description:</label>
           <input
-            type="number"
-            name="fdr"
-            value={newPayment.fdr}
+            type="text"
+            name="paymentDescription"
+            value={newPayment.paymentDescription}
             onChange={handleInputChange}
-            placeholder="Enter FDR amount"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Sy Dr:</label>
-          <input
-            type="number"
-            name="syDr"
-            value={newPayment.syDr}
-            onChange={handleInputChange}
-            placeholder="Enter Sy Dr amount"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Sy Cr:</label>
-          <input
-            type="number"
-            name="syCr"
-            value={newPayment.syCr}
-            onChange={handleInputChange}
-            placeholder="Enter Sy Cr amount"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Property:</label>
-          <input
-            type="number"
-            name="property"
-            value={newPayment.property}
-            onChange={handleInputChange}
-            placeholder="Enter Property amount"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">EME Journal Fund:</label>
-          <input
-            type="number"
-            name="emeJournalFund"
-            value={newPayment.emeJournalFund}
-            onChange={handleInputChange}
-            placeholder="Enter EME Journal Fund amount"
+            placeholder="Enter Payment Description"
             className="w-full border border-gray-300 rounded-lg px-4 py-2"
           />
         </div>
         <div className="flex space-x-4">
-          <AddPayment newPayment={newPayment} onSuccess={resetForm} />
-          <UpdatePayment newPayment={newPayment} onSuccess={resetForm} />
+          <AddPayment newPayment={newPayment} onSuccess={resetForm} validateForm={validateForm} />
+          <UpdatePayment newPayment={newPayment} onSuccess={resetForm} validateForm={validateForm} />
           <DeletePayment 
-            year={newPayment.date ? new Date(newPayment.date).getFullYear() : null} 
-            pv={newPayment.pv} 
-            pvNo={newPayment.pvNo}
+            newPayment={newPayment}
             onSuccess={resetForm}
+            validateForm={validateForm}
           />
+        </div>
+        <div className="mt-4">
+          {error && (
+            <div className="text-red-500 text-sm">
+              {error}
+            </div>
+          )}
         </div>
       </form>
     </div>

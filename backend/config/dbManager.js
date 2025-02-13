@@ -18,34 +18,40 @@ const validateFinancialYear = (year) => {
   }
 };
 
-// Get connection for specific financial year
-const getConnection = async (financialYear) => {
-  // Creates database name like: mceme_FY2023-2024
-  const dbName = `mceme_${financialYear}`;
-  
-  // Check if connection exists in cache
-  if (connections.has(dbName)) {
-    console.log(`connected to database ${dbName}`);
-    return connections.get(dbName);
-  }
-
-  // Create new connection for specific financial year
-  const connection = await mongoose.createConnection(
-    `${baseUrl}/${dbName}?retryWrites=true&w=majority`
-  );
-  
-  // Cache the connection
-  connections.set(dbName, connection);
-  console.log(`connected to database ${dbName}`);
-  return connection;
-};
-
 // Close all connections
 const closeAllConnections = async () => {
   for (const [dbName, connection] of connections) {
     await connection.close();
     connections.delete(dbName);
     console.log(`Closed connection to ${dbName}`);
+  }
+};
+
+// Get connection for specific financial year
+const getConnection = async (financialYear) => {
+  if (!financialYear) throw new Error('Financial year is required');
+  
+  validateFinancialYear(financialYear);
+  const dbName = `mceme_${financialYear}`;
+  
+  if (connections.has(dbName)) {
+    return connections.get(dbName);
+  }
+
+  try {
+    // Close all existing connections before establishing a new one
+    await closeAllConnections();
+
+    const connection = await mongoose.createConnection(
+      `${baseUrl}/${dbName}?retryWrites=true&w=majority`
+    );
+
+    connections.set(dbName, connection);
+    console.log(`Connected to database: ${dbName}`);
+    return connection;
+  } catch (error) {
+    console.error(`Failed to connect to database ${dbName}:`, error);
+    throw error;
   }
 };
 
