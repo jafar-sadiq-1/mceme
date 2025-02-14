@@ -73,14 +73,18 @@ const unitsSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  advanceAmount: {  // Added new field
+    type: Number,
+    default: 0,
+    min: 0
+  },
   history: [historyEntrySchema], // Array of history entries
 }, {
   timestamps: true
 });
 
-// Add index for better query performance
-unitsSchema.index({ currentFinancialYear: 1 });
-unitsSchema.index({ 'history.financialYear': 1 });
+// Single index for unique unit names
+unitsSchema.index({ nameOfUnit: 1 }, { unique: true });
 
 const Units = mongoose.model('Units', unitsSchema);
 

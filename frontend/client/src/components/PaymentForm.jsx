@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import AddPayment from './AddPayment';
 import UpdatePayment from './UpdatePayment';
 import DeletePayment from './DeletePayment';
+import axios from 'axios';
+import { getFinancialYear } from '../utils/financialYearHelper';
 
 const PaymentForm = () => {
   const initialState = {
     date: "",
-    voucherType: "PV",
-    voucherNo: "",
+    voucherType: "",  // Start with empty selection
+    voucherNo: 0,
+    counterVoucherNo: 0, // Added to match ReceiptForm
     particulars: "",
     customParticulars: "",
     paymentType: "",
@@ -22,6 +25,12 @@ const PaymentForm = () => {
     property: 0,
     emeJournalFund: 0,
   };
+
+  // Update voucher type options array to match format in ReceiptForm
+  const voucherTypeOptions = [
+    { value: "PV", label: "PV (Payment Voucher)" },
+    { value: "CE_RV", label: "CE RV (Corps of Engineers Receipt Voucher)" }
+  ];
 
   const paymentTypeOptions = [
     "Bank Adjustment",
@@ -67,8 +76,51 @@ const PaymentForm = () => {
     "Custom"
   ];
 
+  const fetchLastVoucherNo = async (date, voucherType) => {
+    try {
+      if (!date || !voucherType) return;
+
+      const financialYear = getFinancialYear(date);
+      const response = await axios.get(
+        `http://localhost:5000/api/payments/lastVoucherNo`, {
+          params: {
+            year: financialYear,
+            voucherType
+          }
+        }
+      );
+
+      const lastVoucherNo = response.data.lastVoucherNo;
+      console.log(financialYear,lastVoucherNo);
+      setNewPayment(prev => ({
+        ...prev,
+        voucherNo: lastVoucherNo + 1
+      }));
+    } catch (error) {
+      console.error("Error fetching last voucher number:", error);
+      setError("Error fetching last voucher number");
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    // First update the state with the new value
+    setNewPayment(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // If date or voucherType changed, check if we can fetch the last voucher number
+    if (name === 'date' || name === 'voucherType') {
+      const updatedDate = name === 'date' ? value : newPayment.date;
+      const updatedVoucherType = name === 'voucherType' ? value : newPayment.voucherType;
+      
+      if (updatedDate && updatedVoucherType) {
+        fetchLastVoucherNo(updatedDate, updatedVoucherType);
+      }
+      return;
+    }
 
     if (name === "voucherNo") {
       setNewPayment(prev => ({
@@ -150,28 +202,35 @@ const PaymentForm = () => {
             className="w-full border border-gray-300 rounded-lg px-4 py-2"
           />
         </div>
+
         <div>
-          <label className="block text-gray-700 font-medium mb-1">PV:</label>
-          <div className="flex space-x-2">
-            <select
-              name="voucherType"
-              value={newPayment.voucherType}
-              onChange={handleInputChange}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2"
-            >
-              <option value="PV">PV</option>
-              <option value="CE RV">CE RV</option>
-            </select>
+          <label className="block text-gray-700 font-medium mb-1">Voucher Type:</label>
+          <select 
+            name="voucherType" 
+            value={newPayment.voucherType} 
+            onChange={handleInputChange} 
+            className="w-full border border-gray-300 rounded-lg px-4 py-2"
+          >
+            <option value="">Select Voucher Type</option>
+            {voucherTypeOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Voucher Number:</label>
             <input
-              type="text"
+              type="number"
               name="voucherNo"
-              value={newPayment.voucherNo}
+              value={newPayment.voucherNo || ""}
               onChange={handleInputChange}
-              placeholder={`Enter ${newPayment.voucherType} number`}
+              placeholder="Enter Voucher Number"
               className="w-full border border-gray-300 rounded-lg px-4 py-2"
             />
           </div>
         </div>
+
         <div>
           <label className="block text-gray-700 font-medium mb-1">Particulars:</label>
           <div className="flex space-x-2">

@@ -13,7 +13,7 @@ const DeleteUnit = ({ newUnit }) => {
 
   return (
     <button
-      className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 focus:outline-none"
+      className="bg-red-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:scale-110 transition-transform duration-200"
       onClick={handleDeleteUnit}
     >
       Delete Unit

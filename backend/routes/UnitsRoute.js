@@ -13,7 +13,8 @@ router.post("/add", async (req, res) => {
       currentFinancialYear,
       currentFinancialAmount,
       lastFinancialYearAmount,
-      unpaidAmount
+      unpaidAmount,
+      advanceAmount  // Added new field
     } = req.body;
 
     // Validate required numeric fields
@@ -22,7 +23,8 @@ router.post("/add", async (req, res) => {
       amount,
       currentFinancialAmount,
       lastFinancialYearAmount,
-      unpaidAmount
+      unpaidAmount,
+      advanceAmount  // Added new field
     };
 
     for (const [field, value] of Object.entries(numericFields)) {
@@ -42,6 +44,7 @@ router.post("/add", async (req, res) => {
       currentFinancialAmount: Number(currentFinancialAmount),
       lastFinancialYearAmount: Number(lastFinancialYearAmount),
       unpaidAmount: Number(unpaidAmount),
+      advanceAmount: Number(advanceAmount),  // Added new field
       history: [] // Initialize empty history array
     });
 
@@ -71,7 +74,8 @@ router.put("/update/:nameOfUnit", async (req, res) => {
       command,
       currentFinancialAmount,
       lastFinancialYearAmount,
-      unpaidAmount
+      unpaidAmount,
+      advanceAmount  // Added new field
     } = req.body;
 
     const nameOfUnit = req.params.nameOfUnit;
@@ -83,7 +87,8 @@ router.put("/update/:nameOfUnit", async (req, res) => {
       command,
       currentFinancialAmount: Number(currentFinancialAmount),
       lastFinancialYearAmount: Number(lastFinancialYearAmount),
-      unpaidAmount: Number(unpaidAmount)
+      unpaidAmount: Number(unpaidAmount),
+      advanceAmount: Number(advanceAmount)  // Added new field
     };
 
     const updatedUnit = await Unit.findOneAndUpdate(

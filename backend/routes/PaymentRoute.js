@@ -1,41 +1,105 @@
 const express = require("express");
 const router = express.Router();
-const Payment = require("../models/Payments");
+const paymentSchema = require("../models/Payments");
+const { getConnection } = require("../config/dbManager");
+const { getFinancialYear } = require("../utils/financialYearHelper"); // Fixed import path
 
-// @route   GET /api/receipts
-// @desc    Get receipts (filtered by year and month if provided)
+// Middleware to setup database connection based on financial year
+const setupDbConnection = async (req, res, next) => {
+  try {
+    let financialYear;
+    
+    // Get financial year from query params
+    if (req.query.year) {
+      financialYear = req.query.year;
+    }
+    // Or from request body
+    else if (req.body.financialYear) {
+      financialYear = req.body.financialYear;
+    }
+    // Or calculate from date
+    else if (req.body.date) {
+      const date = new Date(req.body.date);
+      const month = date.getMonth() + 1;
+      const year = date.getFullYear();
+      const startYear = month <= 3 ? year - 1 : year;
+      financialYear = `FY${startYear}-${startYear + 1}`;
+    }
+
+    if (!financialYear) {
+      return res.status(400).json({ message: "Financial year is required" });
+    }
+
+    // Get connection for the specific financial year
+    const connection = await getConnection(financialYear);
+    req.PaymentModel = connection.model('Payment', paymentSchema);
+    next();
+  } catch (error) {
+    res.status(500).json({ message: "Database connection error", error: error.message });
+  }
+};
+
+// Apply middleware to all routes
+router.use(setupDbConnection);
+
+// GET route
 router.get("/", async (req, res) => {
   try {
-    const { year, month } = req.query;
+    const { month } = req.query;
     let filter = {};
-
-    if (year) filter.year = parseInt(year);
-    if (month) filter.month = month;
-
-    const payments = await Payment.find(filter).sort({ date: -1 });
+    
+    if (month) {
+      filter.month = new Date(0, month - 1).toLocaleString('default', { month: 'long' });
+    }
+    const payments = await req.PaymentModel.find(filter).sort({ date: -1 });
     res.json(payments);
   } catch (error) {
     console.error("Error fetching Payments:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ 
+      message: "Server error",
+      error: error.message
+    });
   }
 });
 
-router.post("/", async (req, res) => {
+// GET last voucher number for a specific type
+router.get("/lastVoucherNo", async (req, res) => {
   try {
-    // Destructure fields from the request body
-    const { pv, pvNo, date, particulars, cash, bank, fdr, syDr, syCr, property, emeJournalFund } = req.body;
-
-    // Check for required pvNo when pv is not BBF
-    if (pv !== 'BBF' && !pvNo) {
-      return res.status(400).json({ 
-        message: "PV Number is required for non-BBF entries" 
-      });
+    const { voucherType } = req.query;
+    
+    if (!voucherType) {
+      return res.status(400).json({ message: "Voucher type is required" });
     }
 
-    // Create a new receipt
-    const newPayment = new Payment({
-      pv,
-      pvNo: Number(pvNo), // Ensure pvNo is a number
+    const lastPayment = await req.PaymentModel.findOne(
+      { voucherType },              // Changed from pv
+      { voucherNo: 1 },            // Changed from pvNo
+      { sort: { voucherNo: -1 } }  // Changed from pvNo
+    );
+
+    res.json({ 
+      lastVoucherNo: lastPayment ? lastPayment.voucherNo : 0 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: "Error fetching last voucher number", 
+      error: error.message 
+    });
+  }
+});
+
+// POST route
+router.post("/", async (req, res) => {
+  try {
+    const { voucherType, voucherNo, date, particulars, cash, bank, fdr, syDr, syCr, property, emeJournalFund } = req.body;
+
+    if (voucherType !== 'BBF' && !voucherNo) {
+      return res.status(400).json({ message: "Voucher Number is required for non-BBF entries" });
+    }
+
+    const newPayment = new req.PaymentModel({
+      voucherType,          // Changed from pv
+      voucherNo: Number(voucherNo),  // Changed from pvNo
       date,
       particulars,
       cash: Number(cash) || 0,
@@ -47,91 +111,53 @@ router.post("/", async (req, res) => {
       emeJournalFund: Number(emeJournalFund) || 0
     });
 
-    // Save the receipt to the database
-    try {
-      await newPayment.save();
-      
-      // Send success response
-      res.status(201).json({
-        message: "Payment created successfully",
-        payment: newPayment
-      });
-    } catch (saveError) {
-      console.error("Save Error Details:", {
-        code: saveError.code,
-        keyPattern: saveError.keyPattern,
-        keyValue: saveError.keyValue
-      });
-
-      if (saveError.code === 11000) {
-        const keyValue = saveError.keyValue || {};
-        return res.status(400).json({ 
-          message: `A payment with PV type ${keyValue.pv || pv} and number ${keyValue.pvNo || pvNo} already exists for year ${keyValue.year || new Date(date).getFullYear()}`
-        });
-      }
-      throw saveError;
-    }
+    await newPayment.save();
+    res.status(201).json({ message: "Payment created successfully", payment: newPayment });
   } catch (error) {
-    console.error("Route Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message,
-      details: error.code === 11000 ? error.keyValue : undefined
-    });
+    console.error("Error creating payment:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
-// @route   DELETE /api/receipts
-// @desc    Delete a receipt based on year, rv, and rvNo
+// DELETE route
 router.delete("/", async (req, res) => {
   try {
-    const { year, pv, pvNo } = req.query;
+    const { voucherType, voucherNo } = req.query;  // Changed from pv, pvNo
 
-    if (!year || !pv || !pvNo) {
-      return res.status(400).json({ message: "Missing required parameters: year, pv, or pvNo" });
+    if (!voucherType || !voucherNo) {
+      return res.status(400).json({ message: "Missing required parameters: voucherType or voucherNo" });
     }
 
-    // Find and delete the receipt matching year, rv, and rvNo
-    const deletedPayment = await Payment.findOneAndDelete({ year, pv, pvNo });
+    const deletedPayment = await req.PaymentModel.findOneAndDelete({ voucherType, voucherNo });
 
     if (!deletedPayment) {
       return res.status(404).json({ message: "Payment not found" });
     }
 
-    res.status(200).json({
-      message: "Payment deleted successfully",
-      payment: deletedPayment,
-    });
+    res.json({ message: "Payment deleted successfully", payment: deletedPayment });
   } catch (error) {
-    console.error("Error deleting payment:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Error deleting payment", error: error.message });
   }
 });
 
-router.put('/', async (req, res) => {
+// UPDATE route
+router.put("/", async (req, res) => {
   try {
-    const { year, month, pv, pvNo, ...updateData } = req.body;
-    // Find the receipt to update
-    const payment = await Payment.findOne({ year, pv, pvNo });
+    const { voucherType, voucherNo, ...updateData } = req.body;  // Changed from pv, pvNo
+    const payment = await req.PaymentModel.findOneAndUpdate(
+      { voucherType, voucherNo },
+      updateData,
+      { new: true, runValidators: true }
+    );
 
     if (!payment) {
-      return res.status(404).json({ message: 'Payment not found' });
+      return res.status(404).json({ message: "Payment not found" });
     }
 
-    // Update the fields
-    Object.keys(updateData).forEach((key) => {
-      payment[key] = updateData[key];
-    });
-
-    // Save the updated receipt
-    await payment.save();
-
-    res.json({ message: 'Payment updated successfully', payment });
+    res.json({ message: "Payment updated successfully", payment });
   } catch (error) {
-    console.error('Error updating payment:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: "Error updating payment", error: error.message });
   }
 });
-
 
 module.exports = router;

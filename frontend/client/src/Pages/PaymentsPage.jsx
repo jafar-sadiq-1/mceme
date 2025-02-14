@@ -32,7 +32,6 @@ const PaymentsPage = () => {
         params: { year, month },
         signal: abortControllerRef.current.signal,
       });
-      console.log(year,month);
       setPayments(response.data);
 
       // Calculate totals efficiently
@@ -64,12 +63,59 @@ const PaymentsPage = () => {
     fetchPayments(selectedFY, selectedMonth);
   }, [selectedFY, selectedMonth]);
 
+  const handlePrint = () => {
+    const printContents = document.getElementById("printable-area").innerHTML;
+    const originalContents = document.body.innerHTML;
+    document.body.innerHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Print Receipts</title>
+          <style>
+            @media print {
+              body::before {
+                content: "EME Journal";
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) rotate(-30deg);
+                font-size: 80px;
+                font-weight: bold;
+                color: rgba(0, 0, 0, 0.1);
+                z-index: 1000;
+                pointer-events: none;
+                white-space: nowrap;
+              }
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              border-spacing: 0;
+            }
+            th, td {
+              border: 1px solid black;
+              padding: 8px;
+              text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          ${printContents}
+        </body>
+      </html>
+    `;
+    
+    window.print();
+    document.body.innerHTML = originalContents;
+    window.location.reload();
+  };
+
   return (
     <>
       <Header />
       <div className="p-6 bg-gradient-to-r from-teal-100 to-violet-100 font-serif">
         <h1 className="text-3xl mb-4 text-purple-700">Payment Management</h1>
-        <div className="bg-white shadow-md rounded-lg p-6">
+        <div className="bg-white shadow-md rounded-lg p-6"style={{ fontFamily: 'Times New Roman, serif' }} >
           <div className="mb-6 flex space-x-4">
             <select
               className="border px-4 py-2 rounded-lg"
@@ -99,42 +145,42 @@ const PaymentsPage = () => {
           {error && <div className="text-red-500 text-center">{error}</div>}
           
           {/* Payment List */}
-          <div className="mb-8">
+          <div className="mb-8" id="printable-area">
             <h2 className="text-2xl text-black text-center">
               {selectedFY ? `Payment List for ${selectedFY}` : "Payment List"}
               {selectedMonth && ` - ${new Date(0, selectedMonth - 1).toLocaleString("en", { month: "long" })}`}
             </h2>
 
             {payments.length > 0 ? (
-              <table className="table-auto w-full border-collapse border border-gray-300">
+              <table className="table-auto w-full border-collapse border border-black">
                 <thead>
-                  <tr className="bg-violet-600 text-white">
+                  <tr className="bg-violet-500 text-black">
                     {["Date", "PV", "Particulars", "Cash", "Bank", "FDR", "Sy Dr", "Sy Cr", "Property", "EME Journal Fund"].map((header) => (
-                      <th key={header} className="px-4 py-2 border border-gray-300">{header}</th>
+                      <th key={header} className="px-4 py-2 border border-black">{header}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {payments.map((payment, index) => (
                     <tr key={index} className={index % 2 === 0 ? "bg-violet-50" : "bg-white"}>
-                      <td className="px-4 py-2 border border-gray-300 text-center">
+                      <td className="px-4 py-2 border border-black text-center">
                         {new Date(payment.date).toLocaleDateString("en-GB")}
                       </td>
-                      <td className="px-4 py-2 border border-gray-300">{payment.voucherType + payment.voucherNo}</td>
-                      <td className="px-4 py-2 border border-gray-300">
+                      <td className="px-4 py-2 border border-black">{payment.voucherType + payment.voucherNo}</td>
+                      <td className="px-4 py-2 border border-black">
                         {payment.particulars === "Custom" ? payment.customParticulars : payment.particulars}
                       </td>
                       {["cash", "bank", "fdr", "syDr", "syCr", "property", "emeJournalFund"].map((key) => (
-                        <td key={key} className="px-4 py-2 border border-gray-300 text-right">
+                        <td key={key} className="px-4 py-2 border border-black text-right">
                           {payment[key] || ""}
                         </td>
                       ))}
                     </tr>
                   ))}
                   <tr className="bg-violet-200 font-bold">
-                    <td className="px-4 py-2 border border-gray-300" colSpan="3">Totals</td>
+                    <td className="px-4 py-2 border border-black" colSpan="3">Totals</td>
                     {["cash", "bank", "fdr", "syDr", "syCr", "property", "emeJournalFund"].map((key) => (
-                      <td key={key} className="px-4 py-2 border border-gray-300 text-right">
+                      <td key={key} className="px-4 py-2 border border-black text-right">
                         {totals[key].toFixed(2)}
                       </td>
                     ))}
@@ -143,6 +189,13 @@ const PaymentsPage = () => {
               </table>
             ) : !loading && <p className="text-gray-700">No payments found for the selected period.</p>}
           </div>
+          {payments.length > 0 && (
+            <div className="flex justify-center mt-4">
+              <button onClick={handlePrint} className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-blue-green hover:scale-110 transition-transform duration-200">
+                Print
+              </button>
+            </div>
+          )}
           <PaymentForm />
         </div>
       </div>

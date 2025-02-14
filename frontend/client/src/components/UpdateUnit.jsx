@@ -13,7 +13,7 @@ const UpdateUnit= ({ newUnit }) => {
 
   return (
     <button
-      className="bg-yellow-600 text-white px-4 py-2 rounded mr-2 hover:bg-yellow-700 focus:outline-none"
+      className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-blue-green hover:scale-110 transition-transform duration-200"
       onClick={handleUpdateUnit}
     >
       Update Unit

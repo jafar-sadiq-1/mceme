@@ -37,8 +37,7 @@ const AddForm = ({ newFdr, setNewFdr }) => {
   return (
     <button
       onClick={handleAddFdr}
-      className="bg-green-500 text-white px-4 py-2 rounded-lg"
-    >
+      className="bg-blue-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-blue-600 hover:scale-110 transition-transform duration-200">
       Add FDR
     </button>
   );

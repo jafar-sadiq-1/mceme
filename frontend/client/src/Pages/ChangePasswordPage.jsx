@@ -23,7 +23,7 @@ const ChangePasswordPage = () => {
 
     try {
       const payload = oldUsername ? { newUsername, prevPassword, newPassword } : { prevPassword, newPassword };
-      const endpoint = oldUsername ? `http://localhost:5000/change_credentials/${oldUsername}` : `http://localhost:5000/change_password`;
+      const endpoint = oldUsername ? `http://localhost:5000/change_credentials/${oldUsername}` : 'http://localhost:5000/change_password';
 
       const response = await axios.put(endpoint, payload);
       setMessage(response.data.message);
@@ -40,12 +40,12 @@ const ChangePasswordPage = () => {
   return (
     <>
       <Header />
-      <div className="flex justify-center items-center h-screen bg-gray-100">
+      <div className="flex justify-center items-center h-screen bg-gradient-to-r from-teal-100 to-violet-100" style={{ fontFamily: 'Times New Roman, serif' }}>
         <form
           onSubmit={handleSubmit}
           className="w-[400px] p-6 bg-white rounded-lg shadow-md"
         >
-          <h2 className="text-2xl font-bold mb-4 text-center text-blue-600">
+          <h2 className="text-2xl font-bold mb-4 text-center text-violet-500">
             {oldUsername ? 'Change Username & Password' : 'Change Password'}
           </h2>
 
@@ -113,7 +113,7 @@ const ChangePasswordPage = () => {
 
           <button
             type="submit"
-            className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="w-full p-2 bg-blue-400 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-blue-500 hover:scale-110 transition-transform duration-200"
           >
             {oldUsername ? 'Change Username & Password' : 'Change Password'}
           </button>

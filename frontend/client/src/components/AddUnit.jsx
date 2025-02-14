@@ -14,7 +14,7 @@ const AddUnit = ({ newUnit }) => {
 
   return (
     <button
-      className="bg-blue-600 text-white px-4 py-2 rounded mr-2 hover:bg-blue-700 focus:outline-none"
+      className="bg-blue-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-blue-600 hover:scale-110 transition-transform duration-200"
       onClick={handleAddUnit}
     >
       Add Unit
