@@ -65,6 +65,19 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Get Single Unit by Name
+router.get("/:nameOfUnit", async (req, res) => {
+  try {
+    const unit = await Unit.findOne({ nameOfUnit: req.params.nameOfUnit });
+    if (!unit) {
+      return res.status(404).json({ error: "Unit not found" });
+    }
+    res.status(200).json(unit);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching unit: " + error.message });
+  }
+});
+
 // Update a Unit by nameOfUnit
 router.put("/update/:nameOfUnit", async (req, res) => {
   try {
@@ -75,12 +88,13 @@ router.put("/update/:nameOfUnit", async (req, res) => {
       currentFinancialAmount,
       lastFinancialYearAmount,
       unpaidAmount,
-      advanceAmount  // Added new field
+      advanceAmount,
+      history  // Add history to destructuring
     } = req.body;
 
     const nameOfUnit = req.params.nameOfUnit;
 
-    // Create update object with all fields
+    // Include history in updateData
     const updateData = {
       ledgerPageNumber: Number(ledgerPageNumber),
       amount: Number(amount),
@@ -88,7 +102,8 @@ router.put("/update/:nameOfUnit", async (req, res) => {
       currentFinancialAmount: Number(currentFinancialAmount),
       lastFinancialYearAmount: Number(lastFinancialYearAmount),
       unpaidAmount: Number(unpaidAmount),
-      advanceAmount: Number(advanceAmount)  // Added new field
+      advanceAmount: Number(advanceAmount),
+      history: history || []  // Include history array in update
     };
 
     const updatedUnit = await Unit.findOneAndUpdate(

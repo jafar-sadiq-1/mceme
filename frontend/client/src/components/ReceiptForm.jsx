@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import AddReceipt from './AddReceipt';
 import UpdateReceipt from './UpdateReceipt';
 import DeleteReceipt from './DeleteReceipt';
@@ -7,6 +7,22 @@ import axios from 'axios';
 import { getFinancialYear } from '../utils/financialYearHelper';
 
 const ReceiptForm = () => {
+  const { units, setUnits } = useContext(AppContext);  // Add setUnits from context
+
+  // Add useEffect to fetch units
+  useEffect(() => {
+    const fetchUnits = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/units');
+        setUnits(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        console.error('Error fetching units:', error.message || error);
+      }
+    };
+    
+    fetchUnits();
+  }, [setUnits]);
+
   const initialState = {
     date: "",  
     voucherType: "",  // Changed from "RV" to empty string
@@ -90,11 +106,9 @@ const ReceiptForm = () => {
     return true;
   };
 
+  // Remove the hard-coded particularsOptions array and create a computed array from units
   const particularsOptions = [
-    "Unit 1",
-    "Unit 2",
-    "Unit 3",
-    "Unit 4",
+    ...units.map(unit => unit.nameOfUnit),
     "Custom"
   ];
 

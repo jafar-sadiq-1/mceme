@@ -11,10 +11,103 @@ const AddReceipt = ({ newReceipt, onSuccess, validateForm }) => {
     try {
       setError("");
       
-      if (!validateForm()) {
-        return;
+      if (!validateForm()) return;
+
+      // Get the amount based on the payment method
+      let remainingReceiptAmount = Number(newReceipt[newReceipt.method] || 0);
+      
+      // Skip unit update if it's a custom particular
+      if (newReceipt.particulars !== "Custom") {
+        // Fetch unit details
+        const unitResponse = await axios.get(`http://localhost:5000/api/units/${newReceipt.particulars}`);
+        const unit = unitResponse.data;
+
+        let updatedUnit = { ...unit };
+        let historyEntries = [];
+
+        // Check both last FY and current FY amounts
+        if (unit.lastFinancialYearAmount > 0) {
+          // Calculate how much can be reduced from last FY amount
+          const amountToReduceLastFY = Math.min(unit.lastFinancialYearAmount, remainingReceiptAmount);
+          updatedUnit.lastFinancialYearAmount = unit.lastFinancialYearAmount - amountToReduceLastFY;
+          remainingReceiptAmount -= amountToReduceLastFY;
+
+          // Add history entry for last FY payment
+          if (amountToReduceLastFY > 0) {
+            historyEntries.push({
+              financialYear: getFinancialYear(newReceipt.date),
+              dateReceived: new Date(newReceipt.date).toISOString(),
+              voucherType: newReceipt.voucherType,
+              voucherNo: Number(newReceipt.voucherNo),
+              amount: amountToReduceLastFY,
+              typeOfVoucher: newReceipt.receiptType === "Custom" 
+                ? newReceipt.customReceiptType 
+                : newReceipt.receiptType,
+              receiptFor: "Last Financial Year Amount"
+            });
+          }
+        }
+
+        // If there's still remaining amount and current FY has pending amount
+        if (remainingReceiptAmount > 0 && unit.currentFinancialAmount > 0) {
+          const amountToReduceCurrentFY = Math.min(unit.currentFinancialAmount, remainingReceiptAmount);
+          updatedUnit.currentFinancialAmount = unit.currentFinancialAmount - amountToReduceCurrentFY;
+          remainingReceiptAmount -= amountToReduceCurrentFY;
+
+          // Add history entry for current FY payment
+          if (amountToReduceCurrentFY > 0) {
+            historyEntries.push({
+              financialYear: getFinancialYear(newReceipt.date),
+              dateReceived: new Date(newReceipt.date).toISOString(),
+              voucherType: newReceipt.voucherType,
+              voucherNo: Number(newReceipt.voucherNo),
+              amount: amountToReduceCurrentFY,
+              typeOfVoucher: newReceipt.receiptType === "Custom" 
+                ? newReceipt.customReceiptType 
+                : newReceipt.receiptType,
+              receiptFor: "Current Financial Year Amount"
+            });
+          }
+        }
+
+        // If there's still remaining amount, add it to advance
+        if (remainingReceiptAmount > 0) {
+          updatedUnit.advanceAmount = (unit.advanceAmount || 0) + remainingReceiptAmount;
+          
+          // Add history entry for advance payment
+          historyEntries.push({
+            financialYear: getFinancialYear(newReceipt.date),
+            dateReceived: new Date(newReceipt.date).toISOString(),
+            voucherType: newReceipt.voucherType,
+            voucherNo: Number(newReceipt.voucherNo),
+            amount: remainingReceiptAmount,
+            typeOfVoucher: newReceipt.receiptType === "Custom" 
+              ? newReceipt.customReceiptType 
+              : newReceipt.receiptType,
+            receiptFor: "Advance Amount"
+          });
+        }
+        
+        // Create the final update data with all fields including history
+        const updateData = {
+          ledgerPageNumber: updatedUnit.ledgerPageNumber,
+          amount: updatedUnit.amount,
+          command: updatedUnit.command,
+          currentFinancialAmount: updatedUnit.currentFinancialAmount,
+          lastFinancialYearAmount: updatedUnit.lastFinancialYearAmount,
+          unpaidAmount: updatedUnit.unpaidAmount,
+          advanceAmount: updatedUnit.advanceAmount,
+          history: [...(unit.history || []), ...historyEntries] // Explicitly combine existing and new history
+        };
+
+        // Update unit in database with complete data
+        await axios.put(
+          `http://localhost:5000/api/units/update/${newReceipt.particulars}`,
+          updateData
+        );
       }
 
+      // Prepare and send receipt data
       const financialYear = getFinancialYear(newReceipt.date);
       const receiptData = {
         ...newReceipt,
