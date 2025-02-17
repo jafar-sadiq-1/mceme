@@ -8,8 +8,6 @@ const DeleteReceipt = ({ newReceipt, onSuccess }) => {
 
   const handleDeleteReceipt = async () => {
     try {
-      console.log('newReceipt prop:', newReceipt);
-
       if (!newReceipt || !newReceipt.date) {
         throw new Error('Receipt data or date is missing');
       }
@@ -20,12 +18,14 @@ const DeleteReceipt = ({ newReceipt, onSuccess }) => {
 
       const financialYear = getFinancialYear(newReceipt.date);
 
+      // Delete the receipt and handle unit updates
       const response = await axios.delete(
         `http://localhost:5000/api/receipts`, {
           params: {
             year: financialYear,
             voucherType: newReceipt.voucherType,
-            voucherNo: newReceipt.voucherNo
+            voucherNo: newReceipt.voucherNo,
+            particulars: newReceipt.particulars // Pass particulars to identify if custom or unit
           }
         }
       );
@@ -33,7 +33,7 @@ const DeleteReceipt = ({ newReceipt, onSuccess }) => {
       console.log('Delete response:', response.data);
       onSuccess();
     } catch (error) {
-      const errorMessage = error.message || "Error deleting receipt";
+      const errorMessage = error.response?.data?.message || error.message || "Error deleting receipt";
       console.error("Error details:", {
         message: errorMessage,
         receiptData: newReceipt

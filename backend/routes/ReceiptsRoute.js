@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const receiptSchema = require("../models/Receipts");
+const Unit = require("../models/Units");  // Add this import
 const { getConnection } = require("../config/dbManager");
 
 // Middleware to setup database connection based on financial year
@@ -126,26 +127,75 @@ router.put("/", async (req, res) => {
 
 // DELETE route
 router.delete("/", async (req, res) => {
-
-  console.log("delete Request");
-
   try {
-    const { voucherType, voucherNo } = req.query;
+    const { voucherType, voucherNo, year, particulars } = req.query;
 
-    console.log(voucherNo , typeof(voucherNo));
-    
-    const deletedReceipt = await req.ReceiptModel.findOneAndDelete({
-      voucherType,
-      voucherNo
-    });
-
-    if (!deletedReceipt) {
-      return res.status(404).json({ message: "Receipt not found" });
+    // If it's an RV, find all subsequent receipts to delete
+    let receiptsToDelete = [];
+    if (voucherType === 'RV') {
+      receiptsToDelete = await req.ReceiptModel.find({
+        voucherType: 'RV',
+        voucherNo: { $gte: Number(voucherNo) }
+      });
+    } else {
+      receiptsToDelete = [await req.ReceiptModel.findOne({ voucherType, voucherNo })];
     }
 
-    res.json({ message: "Receipt deleted successfully", receipt: deletedReceipt });
+    if (!receiptsToDelete.length) {
+      return res.status(404).json({ message: "No receipts found to delete" });
+    }
+
+    // Process each receipt
+    for (const receipt of receiptsToDelete) {
+      // Skip if receipt is for custom particulars
+      if (receipt.particulars !== 'Custom') {
+        // Fetch the unit
+        const unit = await Unit.findOne({ nameOfUnit: receipt.particulars });
+        if (unit) {
+          // Find all history entries with matching voucherType and voucherNo
+          const historyEntries = unit.history.filter(
+            h => h.voucherType === receipt.voucherType && h.voucherNo === receipt.voucherNo
+          );
+
+          // Process each matching history entry
+          for (const historyEntry of historyEntries) {
+            // Rollback the changes based on receiptFor
+            switch (historyEntry.receiptFor) {
+              case 'Advance Amount':
+                unit.advanceAmount -= historyEntry.amount;
+                break;
+              case 'Current Financial Year Amount':
+                unit.currentFinancialAmount += historyEntry.amount;
+                break;
+              case 'Last Financial Year Amount':
+                unit.lastFinancialYearAmount += historyEntry.amount;
+                break;
+            }
+          }
+
+          // Remove all matching history entries
+          unit.history = unit.history.filter(
+            h => !(h.voucherType === receipt.voucherType && h.voucherNo === receipt.voucherNo)
+          );
+
+          // Save the updated unit
+          await unit.save();
+        }
+      }
+
+      // Delete the receipt
+      await req.ReceiptModel.findByIdAndDelete(receipt._id);
+    }
+
+    res.json({ 
+      message: "Receipt(s) deleted successfully", 
+      deletedCount: receiptsToDelete.length 
+    });
   } catch (error) {
-    res.status(500).json({ message: "Error deleting receipt", error: error.message });
+    res.status(500).json({ 
+      message: "Error deleting receipt(s)", 
+      error: error.message 
+    });
   }
 });
 
