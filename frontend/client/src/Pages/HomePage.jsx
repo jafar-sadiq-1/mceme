@@ -33,7 +33,6 @@ const HomePage = () => {
           >
             {text}
           </button>
-          
           ))}
         </div>
       </div>

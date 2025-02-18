@@ -20,12 +20,14 @@ const UnitsForm = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    // Convert numeric fields to numbers
+    // Convert numeric fields to numbers, but allow empty strings
     const numericFields = ['ledgerPageNumber', 'amount', 'currentFinancialAmount', 'lastFinancialYearAmount', 'unpaidAmount', 'advanceAmount'];
     
     setNewUnit(prevState => ({
       ...prevState,
-      [name]: numericFields.includes(name) ? Number(value) || 0 : value
+      [name]: numericFields.includes(name) 
+        ? (value === '' ? '' : Number(value))
+        : value
     }));
   };
 

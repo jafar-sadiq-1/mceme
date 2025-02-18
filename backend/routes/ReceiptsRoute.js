@@ -109,19 +109,56 @@ router.put("/", async (req, res) => {
   try {
     const { voucherType, voucherNo, ...updateData } = req.body;
     
-    const receipt = await req.ReceiptModel.findOneAndUpdate(
-      { voucherType, voucherNo },
-      updateData,
-      { new: true, runValidators: true }
-    );
+    // Find the receipt first to ensure it exists
+    const existingReceipt = await req.ReceiptModel.findOne({ 
+      voucherType, 
+      voucherNo: Number(voucherNo) 
+    });
 
-    if (!receipt) {
+    if (!existingReceipt) {
       return res.status(404).json({ message: 'Receipt not found' });
     }
 
-    res.json({ message: 'Receipt updated successfully', receipt });
+    // Prepare update data with proper number conversions
+    const cleanedUpdateData = {
+      ...updateData,
+      voucherNo: Number(voucherNo),
+      date: new Date(updateData.date),
+      cash: Number(updateData.cash || 0),
+      bank: Number(updateData.bank || 0),
+      fdr: Number(updateData.fdr || 0),
+      sydr: Number(updateData.sydr || 0),
+      sycr: Number(updateData.sycr || 0),
+      property: Number(updateData.property || 0),
+      eme_journal_fund: Number(updateData.eme_journal_fund || 0),
+      counterVoucherNo: Number(updateData.counterVoucherNo || 0)
+    };
+
+    // Update the receipt with the new data
+    const updatedReceipt = await req.ReceiptModel.findOneAndUpdate(
+      { 
+        voucherType, 
+        voucherNo: Number(voucherNo) 
+      },
+      cleanedUpdateData,
+      { 
+        new: true, 
+        runValidators: true 
+      }
+    );
+
+    console.log('Updated receipt:', updatedReceipt); // For debugging
+
+    res.json({ 
+      message: 'Receipt updated successfully', 
+      receipt: updatedReceipt 
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error updating receipt', error: error.message });
+    console.error('Update error:', error); // For debugging
+    res.status(500).json({ 
+      message: 'Error updating receipt', 
+      error: error.message 
+    });
   }
 });
 

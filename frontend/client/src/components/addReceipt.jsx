@@ -22,6 +22,7 @@ const AddReceipt = ({ newReceipt, onSuccess, validateForm }) => {
         const unitResponse = await axios.get(`http://localhost:5000/api/units/${newReceipt.particulars}`);
         const unit = unitResponse.data;
 
+        let receiptFor = [];
         let updatedUnit = { ...unit };
         let historyEntries = [];
 
@@ -88,22 +89,13 @@ const AddReceipt = ({ newReceipt, onSuccess, validateForm }) => {
           });
         }
         
-        // Create the final update data with all fields including history
-        const updateData = {
-          ledgerPageNumber: updatedUnit.ledgerPageNumber,
-          amount: updatedUnit.amount,
-          command: updatedUnit.command,
-          currentFinancialAmount: updatedUnit.currentFinancialAmount,
-          lastFinancialYearAmount: updatedUnit.lastFinancialYearAmount,
-          unpaidAmount: updatedUnit.unpaidAmount,
-          advanceAmount: updatedUnit.advanceAmount,
-          history: [...(unit.history || []), ...historyEntries] // Explicitly combine existing and new history
-        };
+        // Add all history entries to unit
+        updatedUnit.history = [...(unit.history || []), ...historyEntries];
 
-        // Update unit in database with complete data
+        // Update unit in database
         await axios.put(
           `http://localhost:5000/api/units/update/${newReceipt.particulars}`,
-          updateData
+          updatedUnit
         );
       }
 
