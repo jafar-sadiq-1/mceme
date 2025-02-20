@@ -6,17 +6,14 @@ import { getFinancialYear } from '../utils/financialYearHelper';
 const AddPayment = ({ newPayment, onSuccess, validateForm }) => {
   const { setPayments } = useContext(AppContext);
   const [error, setError] = useState("");
-  
+
   const handleAddPayment = async () => {
     try {
-      setError("");
-      
-      if (!validateForm()) {
-        return;
-      }
-      
-      console.log('New payment:', newPayment); // Add this line for debugging
+      if (!validateForm()) return;
+
       const financialYear = getFinancialYear(newPayment.date);
+      
+      // Prepare payment data
       const paymentData = {
         ...newPayment,
         financialYear,
@@ -27,7 +24,7 @@ const AddPayment = ({ newPayment, onSuccess, validateForm }) => {
         particulars: newPayment.particulars === "Custom" 
           ? newPayment.customParticulars 
           : newPayment.particulars,
-        // Ensure numeric fields are numbers
+        // Convert all numeric fields
         voucherNo: Number(newPayment.voucherNo),
         cash: Number(newPayment.cash || 0),
         bank: Number(newPayment.bank || 0),
@@ -35,25 +32,53 @@ const AddPayment = ({ newPayment, onSuccess, validateForm }) => {
         syDr: Number(newPayment.syDr || 0),
         syCr: Number(newPayment.syCr || 0),
         property: Number(newPayment.property || 0),
-        emeJournalFund: Number(newPayment.emeJournalFund || 0)
+        emeJournalFund: Number(newPayment.emeJournalFund || 0),
+        counterVoucherNo: Number(newPayment.counterVoucherNo || 0)
       };
 
-      console.log('Sending payment data:', paymentData); // Add this line for debugging
-      
+      // Handle waveoff payment type for units
+      if (paymentData.paymentType === "Waveoff" && paymentData.particulars !== "Custom") {
+        const waveoffAmount = Number(paymentData[paymentData.method] || 0);
+        const unitResponse = await axios.get(`http://localhost:5000/api/units/${paymentData.particulars}`);
+        const unit = unitResponse.data;
+
+        // Create history entry
+        const historyEntry = {
+          financialYear: getFinancialYear(paymentData.date),
+          dateReceived: paymentData.date,
+          voucherType: paymentData.voucherType,
+          voucherNo: Number(paymentData.voucherNo),
+          amount: waveoffAmount,
+          typeOfVoucher: paymentData.paymentType,
+          receiptFor: "Waveoff"
+        };
+
+        // Update unit
+        const updatedUnit = {
+          ...unit,
+          unpaidAmount: unit.unpaidAmount - waveoffAmount,
+          history: [...(unit.history || []), historyEntry]
+        };
+
+        await axios.put(
+          `http://localhost:5000/api/units/update/${paymentData.particulars}`,
+          updatedUnit
+        );
+      }
+
       const response = await axios.post(
-        `http://localhost:5000/api/payments?year=${financialYear}`, 
+        `http://localhost:5000/api/payments?year=${financialYear}`,
         paymentData
       );
-      console.log(paymentData)
-      
-      console.log('Server response:', response.data); // Add this line for debugging
+
+      console.log('Payment added:', response.data);
       onSuccess();
     } catch (error) {
       const errorMessage = error.response?.data?.message || 
                           error.response?.data?.error || 
                           "Error adding payment";
       setError(errorMessage);
-      console.error("Full error details:", error.response?.data); // Add this line for debugging
+      console.error("Full error details:", error.response?.data);
     }
   };
 

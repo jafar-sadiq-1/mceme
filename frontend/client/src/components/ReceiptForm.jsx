@@ -205,7 +205,7 @@ const ReceiptForm = () => {
   const handleAddReceipt = () => {
     if (!validateForm()) return;
 
-    setReceipts((prevReceipts) => [...prevReceipts, newReceipt]); // Add new receipt
+    setReceipts((prevReceipts) => [...prevReceipts, newReceipt]); 
     resetForm();
   };
 

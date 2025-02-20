@@ -8,8 +8,6 @@ const DeletePayment = ({ newPayment, onSuccess }) => {
 
   const handleDeletePayment = async () => {
     try {
-      console.log('newPayment prop:', newPayment);
-
       if (!newPayment || !newPayment.date) {
         throw new Error('Payment data or date is missing');
       }
@@ -20,12 +18,16 @@ const DeletePayment = ({ newPayment, onSuccess }) => {
 
       const financialYear = getFinancialYear(newPayment.date);
 
+      // Include method and payment type in delete request
       const response = await axios.delete(
         `http://localhost:5000/api/payments`, {
           params: {
             year: financialYear,
             voucherType: newPayment.voucherType,
-            voucherNo: newPayment.voucherNo
+            voucherNo: newPayment.voucherNo,
+            method: newPayment.method,
+            particulars: newPayment.particulars,
+            paymentType: newPayment.paymentType
           }
         }
       );
@@ -33,7 +35,7 @@ const DeletePayment = ({ newPayment, onSuccess }) => {
       console.log('Delete response:', response.data);
       onSuccess();
     } catch (error) {
-      const errorMessage = error.message || "Error deleting payment";
+      const errorMessage = error.response?.data?.message || error.message || "Error deleting payment";
       console.error("Error details:", {
         message: errorMessage,
         paymentData: newPayment

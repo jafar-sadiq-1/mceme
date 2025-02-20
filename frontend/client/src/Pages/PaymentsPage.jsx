@@ -15,8 +15,14 @@ const PaymentsPage = () => {
     cash: 0, bank: 0, fdr: 0, syDr: 0, syCr: 0, property: 0, emeJournalFund: 0
   });
 
-  const financialYears = getFinancialYearsList(4);
+  const financialYears = getFinancialYearsList(10);
   const abortControllerRef = useRef(null);
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June", 
+    "July", "August", "September", "October", "November", "December"
+  ];
+  const months = monthNames.map((month, index) => ({ number: index + 1, name: month }));
 
   const fetchPayments = async (year, month) => {
     if (abortControllerRef.current) {
@@ -110,6 +116,18 @@ const PaymentsPage = () => {
     window.location.reload();
   };
 
+  const year = selectedFY;
+  const month = selectedMonth;
+
+  let heading;
+  if (!year && !month) {
+    heading = "Payment List";
+  } else if (year && !month) {
+    heading = `Payment List for ${year}`;
+  } else if (year && month) {
+    heading = `Payment List for ${month} ${year}`;
+  }
+
   return (
     <>
       <Header />
@@ -133,10 +151,8 @@ const PaymentsPage = () => {
               onChange={(e) => setSelectedMonth(e.target.value || null)}
             >
               <option value="">Select Month</option>
-              {Array.from({ length: 12 }, (_, i) => (
-                <option key={i + 1} value={i + 1}>
-                  {new Date(0, i).toLocaleString("en", { month: "long" })}
-                </option>
+              {months.map((month) => (
+                <option key={month.number} value={month.name}>{month.name}</option>
               ))}
             </select>
           </div>
@@ -146,10 +162,9 @@ const PaymentsPage = () => {
           
           {/* Payment List */}
           <div className="mb-8" id="printable-area">
-            <h2 className="text-2xl text-black text-center">
-              {selectedFY ? `Payment List for ${selectedFY}` : "Payment List"}
-              {selectedMonth && ` - ${new Date(0, selectedMonth - 1).toLocaleString("en", { month: "long" })}`}
-            </h2>
+            <div className="flex justify-center mb-4">
+              <h2 className="text-2xl text-black text-center">{heading}</h2>
+            </div>
 
             {payments.length > 0 ? (
               <table className="table-auto w-full border-collapse border border-black">

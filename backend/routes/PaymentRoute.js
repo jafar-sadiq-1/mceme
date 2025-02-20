@@ -3,6 +3,7 @@ const router = express.Router();
 const paymentSchema = require("../models/Payments");
 const { getConnection } = require("../config/dbManager");
 const { getFinancialYear } = require("../utils/financialYearHelper"); // Fixed import path
+const Unit = require("../models/Units");  // Add this import
 
 // Middleware to setup database connection based on financial year
 const setupDbConnection = async (req, res, next) => {
@@ -91,52 +92,136 @@ router.get("/lastVoucherNo", async (req, res) => {
 // POST route
 router.post("/", async (req, res) => {
   try {
-    const { voucherType, voucherNo, date, particulars, cash, bank, fdr, syDr, syCr, property, emeJournalFund } = req.body;
+    const {
+      date,
+      voucherType,
+      voucherNo,
+      particulars,
+      customParticulars,
+      paymentType,
+      customPaymentType,
+      method,
+      paymentDescription,
+      cash,
+      bank,
+      fdr,
+      syDr,
+      syCr,
+      property,
+      emeJournalFund,
+      financialYear
+    } = req.body;
 
-    if (voucherType !== 'BBF' && !voucherNo) {
-      return res.status(400).json({ message: "Voucher Number is required for non-BBF entries" });
+    // Validate required fields
+    if (!date || !voucherType || !voucherNo || !paymentType || !particulars) {
+      return res.status(400).json({ 
+        message: "Required fields missing",
+        required: ['date', 'voucherType', 'voucherNo', 'paymentType', 'particulars']
+      });
     }
 
+    // Create new payment with all fields
     const newPayment = new req.PaymentModel({
-      voucherType,          // Changed from pv
-      voucherNo: Number(voucherNo),  // Changed from pvNo
-      date,
-      particulars,
+      date: new Date(date),
+      voucherType,
+      voucherNo: Number(voucherNo),
+      particulars: particulars || customParticulars,
+      paymentType: paymentType || customPaymentType,
+      method,
+      paymentDescription,
       cash: Number(cash) || 0,
       bank: Number(bank) || 0,
       fdr: Number(fdr) || 0,
       syDr: Number(syDr) || 0,
       syCr: Number(syCr) || 0,
       property: Number(property) || 0,
-      emeJournalFund: Number(emeJournalFund) || 0
+      emeJournalFund: Number(emeJournalFund) || 0,
+      financialYear
     });
 
-    await newPayment.save();
-    res.status(201).json({ message: "Payment created successfully", payment: newPayment });
+    const savedPayment = await newPayment.save();
+    res.status(201).json({ message: "Payment created successfully", payment: savedPayment });
   } catch (error) {
     console.error("Error creating payment:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ 
+      message: "Server error", 
+      error: error.message 
+    });
   }
 });
 
 // DELETE route
 router.delete("/", async (req, res) => {
   try {
-    const { voucherType, voucherNo } = req.query;  // Changed from pv, pvNo
+    const { voucherType, voucherNo, year } = req.query;
 
-    if (!voucherType || !voucherNo) {
-      return res.status(400).json({ message: "Missing required parameters: voucherType or voucherNo" });
+    // Find all payments to delete (current and subsequent for PV)
+    let paymentsToDelete = [];
+    if (voucherType === 'PV') {
+      paymentsToDelete = await req.PaymentModel.find({
+        voucherType: 'PV',
+        voucherNo: { $gte: Number(voucherNo) }
+      }).sort({ voucherNo: 1 });
+    } else {
+      paymentsToDelete = [await req.PaymentModel.findOne({ voucherType, voucherNo })];
     }
 
-    const deletedPayment = await req.PaymentModel.findOneAndDelete({ voucherType, voucherNo });
-
-    if (!deletedPayment) {
-      return res.status(404).json({ message: "Payment not found" });
+    if (!paymentsToDelete.length) {
+      return res.status(404).json({ message: "No payments found to delete" });
     }
 
-    res.json({ message: "Payment deleted successfully", payment: deletedPayment });
+    // Process each payment
+    for (const payment of paymentsToDelete) {
+      console.log('Processing payment:', payment);
+
+      // Handle waveoff payments
+      if (payment.paymentType === "Waveoff" && payment.particulars !== "Custom") {
+        try {
+          // Fetch the unit
+          const unit = await Unit.findOne({ nameOfUnit: payment.particulars });
+          if (!unit) {
+            console.error(`Unit not found: ${payment.particulars}`);
+            continue;
+          }
+
+          // Get the waveoff amount from the payment's method field
+          const waveoffAmount = Number(payment[payment.method] || 0);
+          console.log(`Waveoff amount to revert: ${waveoffAmount}`);
+
+          // Update unit's unpaid amount
+          unit.unpaidAmount += waveoffAmount;
+          console.log(`Updated unpaid amount: ${unit.unpaidAmount}`);
+
+          // Remove matching history entries
+          const initialHistoryLength = unit.history.length;
+          unit.history = unit.history.filter(h => 
+            !(h.voucherType === payment.voucherType && 
+              h.voucherNo === payment.voucherNo)
+          );
+          console.log(`Removed ${initialHistoryLength - unit.history.length} history entries`);
+
+          // Save the updated unit
+          await unit.save();
+          console.log(`Unit ${unit.nameOfUnit} updated successfully`);
+        } catch (unitError) {
+          console.error('Error updating unit:', unitError);
+        }
+      }
+
+      // Delete the payment
+      await req.PaymentModel.findByIdAndDelete(payment._id);
+    }
+
+    res.json({ 
+      message: "Payment(s) deleted successfully", 
+      deletedCount: paymentsToDelete.length 
+    });
   } catch (error) {
-    res.status(500).json({ message: "Error deleting payment", error: error.message });
+    console.error('Delete payment error:', error);
+    res.status(500).json({ 
+      message: "Error deleting payment(s)", 
+      error: error.message 
+    });
   }
 });
 

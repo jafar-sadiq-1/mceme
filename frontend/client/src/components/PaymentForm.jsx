@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
+import { AppContext } from '../AppContext/ContextProvider';
 import AddPayment from './AddPayment';
 import UpdatePayment from './UpdatePayment';
 import DeletePayment from './DeletePayment';
@@ -6,6 +7,7 @@ import axios from 'axios';
 import { getFinancialYear } from '../utils/financialYearHelper';
 
 const PaymentForm = () => {
+  const { units, setUnits } = useContext(AppContext);  // Add context
   const initialState = {
     date: "",
     voucherType: "",  // Start with empty selection
@@ -68,12 +70,24 @@ const PaymentForm = () => {
     return true;
   };
 
+  // Add useEffect to fetch units
+  useEffect(() => {
+    const fetchUnits = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/units');
+        setUnits(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        console.error('Error fetching units:', error.message || error);
+      }
+    };
+    
+    fetchUnits();
+  }, [setUnits]);
+
+  // Replace hard-coded particularsOptions with computed array from units
   const particularsOptions = [
-    "Option 1",
-    "Option 2",
-    "Option 3",
-    "Option 4",
-    "Custom"
+    "Custom",
+    ...units.map(unit => unit.nameOfUnit)
   ];
 
   const fetchLastVoucherNo = async (date, voucherType) => {
@@ -144,7 +158,7 @@ const PaymentForm = () => {
         setNewPayment((prev) => ({
           ...prev,
           customParticulars: ""
-        }));
+        })); 
       } else {
         setIsCustomSelected(false);
       }
