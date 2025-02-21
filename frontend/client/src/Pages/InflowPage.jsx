@@ -1,83 +1,127 @@
-import React, { useState,useEffect } from 'react';
-import Header from '../components/Header'; 
-
-// Function to format the date as "31 May 2024"
-const formatDate = (date) => {
-  useEffect(() => {
-        const style = document.createElement("style");
-        style.innerHTML = `
-         @media print {
-          body::before {
-            content: "EME Journal";
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-30deg);
-            font-size: 80px;
-            font-weight: bold;
-            color: rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-            pointer-events: none;
-            white-space: nowrap;
-            mix-blend-mode: multiply; /* Ensures it blends with table background */
-          }
-        }
-        `;
-        document.head.appendChild(style);
-        return () => {
-          document.head.removeChild(style); // Cleanup
-        };
-      }, []);
-      
-  const day = date.getDate();
-  const month = date.toLocaleString('default', { month: 'short' }); // Gets the abbreviated month (e.g., "May")
-  const year = date.getFullYear();
-  return `${day} ${month} ${year}`;
-};
-
-// Function to get previous and current financial years dynamically
-const getFinancialYears = (currentYear) => {
-  const prevFinancialYear = `${currentYear - 1}-${currentYear}`;
-  const currentFinancialYear = `${currentYear}-${currentYear + 1}`;
-  return { prevFinancialYear, currentFinancialYear };
-};
+import React, { useState, useEffect, useContext } from 'react';
+import Header from '../components/Header';
+import axios from 'axios';
+import { AppContext } from '../AppContext/ContextProvider';
+import { getFinancialYearsList, getCurrentFinancialYear } from '../utils/financialYearHelper';
 
 const InflowPage = () => {
   const [remarks, setRemarks] = useState([]);
-
-  const data = [
-    { srNo: 1, date: '2024-05-01', inflow: 'Unit 1', subsPrevYr: 1000, subsCurYr: 1500.04, otherReceipts: 200 },
-    { srNo: 2, date: '2024-05-02', inflow: 'Unit 2', subsPrevYr: 1200, subsCurYr: 1800, otherReceipts: 300 },
-    { srNo: 3, date: '2024-05-03', inflow: 'Unit 3', subsPrevYr: 1300, subsCurYr: 2000, otherReceipts: 400 },
-    { srNo: 4, date: '2024-05-04', inflow: 'Unit 4', subsPrevYr: 1400, subsCurYr: 2200, otherReceipts: 500 },
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [inflowData, setInflowData] = useState([]);
+  const { units, setUnits } = useContext(AppContext);
+  const currentDate = new Date();
+  const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
+  const [selectedMonth, setSelectedMonth] = useState('');
+  
+  const financialYears = getFinancialYearsList(10);
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June", 
+    "July", "August", "September", "October", "November", "December"
   ];
 
-  // Get current date and financial years
-  const currentDate = new Date();
-  const currentMonthYear = formatDate(currentDate);
-  const { prevFinancialYear, currentFinancialYear } = getFinancialYears(currentDate.getFullYear());
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [receiptsResponse, unitsResponse] = await Promise.all([
+          axios.get('http://localhost:5000/api/receipts', {
+            params: { 
+              year: selectedFY,
+              month: selectedMonth 
+            }
+          }),
+          axios.get('http://localhost:5000/api/units')
+        ]);
+
+        setUnits(unitsResponse.data);
+
+        const bankReceipts = receiptsResponse.data.filter(
+          receipt => receipt.voucherType === "RV" && receipt.method === "bank"
+        );
+
+        const processedData = await Promise.all(bankReceipts.map(async (receipt, index) => {
+          const baseData = {
+            srNo: index + 1,
+            date: new Date(receipt.date).toLocaleDateString("en-GB"),
+            inflow: receipt.particulars,
+            subsPrevYr: 0,
+            subsCurYr: 0,
+            otherReceipts: 0,
+            total: 0
+          };
+
+          const unit = units.find(u => u.nameOfUnit === receipt.particulars);
+
+          if (!unit) {
+            const amount = Number(receipt[receipt.method] || 0);
+            return {
+              ...baseData,
+              otherReceipts: amount,
+              total: amount
+            };
+          }
+
+          const relevantHistory = unit.history.filter(
+            h => h.voucherType === receipt.voucherType && 
+                 h.voucherNo === receipt.voucherNo
+          );
+
+          relevantHistory.forEach(entry => {
+            const amount = Number(entry.amount || 0);
+            switch (entry.receiptFor) {
+              case 'Last Financial Year Amount':
+                baseData.subsPrevYr += amount;
+                break;
+              case 'Current Financial Year Amount':
+                baseData.subsCurYr += amount;
+                break;
+              case 'Advance Amount':
+                baseData.otherReceipts += amount;
+                break;
+              default:
+                baseData.otherReceipts += amount;
+                break;
+            }
+          });
+
+          baseData.total = baseData.subsPrevYr + baseData.subsCurYr + baseData.otherReceipts;
+          return baseData;
+        }));
+
+        const cleanedData = processedData.filter(Boolean).map(item => ({
+          ...item,
+          subsPrevYr: Number(item.subsPrevYr || 0),
+          subsCurYr: Number(item.subsCurYr || 0),
+          otherReceipts: Number(item.otherReceipts || 0),
+          total: Number(item.total || 0)
+        }));
+
+        setInflowData(cleanedData);
+        setLoading(false);
+      } catch (error) {
+        setError('Failed to fetch data');
+        console.error('Error fetching data:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [setUnits, selectedFY, selectedMonth]);
+
+  const totals = inflowData.reduce((acc, item) => ({
+    subsPrevYr: acc.subsPrevYr + Number(item.subsPrevYr || 0),
+    subsCurYr: acc.subsCurYr + Number(item.subsCurYr || 0),
+    otherReceipts: acc.otherReceipts + Number(item.otherReceipts || 0),
+    total: acc.total + Number(item.total || 0)
+  }), { subsPrevYr: 0, subsCurYr: 0, otherReceipts: 0, total: 0 });
 
   const handleRemarkChange = (index, value) => {
-    const newRemarks = [...remarks];
-    newRemarks[index] = value;
-    setRemarks(newRemarks);
+    setRemarks(prev => {
+      const newRemarks = [...prev];
+      newRemarks[index] = value;
+      return newRemarks;
+    });
   };
-
-  // Calculate row totals and column totals
-  const rowTotals = data.map((item) => {
-    return item.subsPrevYr + item.subsCurYr + item.otherReceipts; // Sum of each row
-  });
-
-  const columnTotals = {
-    inflow: data.reduce((acc, item) => acc + item.inflow.length, 0), // Summing the length of unit names for inflow
-    subsPrevYr: data.reduce((acc, item) => acc + item.subsPrevYr, 0),
-    subsCurYr: data.reduce((acc, item) => acc + item.subsCurYr, 0),
-    otherReceipts: data.reduce((acc, item) => acc + item.otherReceipts, 0),
-    total: rowTotals.reduce((acc, total) => acc + total, 0),
-  };
-
-  // Function to format the amount to two decimals
-  const formatAmount = (amt) => amt.toFixed(2);
 
   const handlePrint = () => {
     const printContents = document.getElementById("print").innerHTML;
@@ -91,50 +135,79 @@ const InflowPage = () => {
       </html>
     `;
     window.print();
-    document.body.innerHTML = originalContents; // Restore after printing
-    window.location.reload(); // Ensure scripts reattach after print
+    document.body.innerHTML = originalContents;
+    window.location.reload();
   };
+
+  let heading;
+  if (!selectedFY && !selectedMonth) {
+    heading = "Inflow Statement";
+  } else if (selectedFY && !selectedMonth) {
+    heading = `Inflow Statement for ${selectedFY}`;
+  } else {
+    heading = `Inflow Statement for ${selectedMonth} ${selectedFY}`;
+  }
 
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gradient-to-r from-teal-100 to-violet-100" style={{ fontFamily: 'Times New Roman, serif' }}>
-      <div className="py-10 flex justify-center">
-        <div className="bg-white shadow-md rounded-lg p-6 w-auto">
-          <div id="print">
-            <h1 className="text-center text-2xl font-bold mb-6">
-              Inflow Statement for the month of {currentMonthYear}
-            </h1>
-            <div className="overflow-x-auto">
-              <table className="table-auto w-full border-collapse border border-gray-300" >
-                <thead className="bg-violet-400 text-black">
-                  <tr>
-                    <th className="border border-black p-3">S.No</th>
-                    <th className="border border-black p-3">Date</th>
-                    <th className="border border-black p-3">Inflow</th>
-                    <th className="border border-black p-3">
-                      Subs for {prevFinancialYear}
-                    </th>
-                    <th className="border border-black p-3">
-                      Subs for {currentFinancialYear}
-                    </th>
-                    <th className="border border-black p-3">Other Receipts</th>
-                    <th className="border border-black p-3">Total</th>
-                    <th className="border border-black p-3">Remarks</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.map((item, index) => {
-                    const rowTotal = rowTotals[index];  // Fetch row total for the current row
-                    return (
+      <div className="min-h-screen bg-gradient-to-r from-teal-100 to-violet-100" 
+           style={{ fontFamily: 'Times New Roman, serif' }}>
+        <div className="py-10 flex justify-center">
+          <div className="bg-white shadow-md rounded-lg p-6 w-auto">
+            <div className="mb-6 flex space-x-4">
+              <select
+                className="border px-4 py-2 rounded-lg"
+                value={selectedFY}
+                onChange={(e) => setSelectedFY(e.target.value)}
+              >
+                {financialYears.map((fy) => (
+                  <option key={fy} value={fy}>{fy}</option>
+                ))}
+              </select>
+
+              <select
+                className="border px-4 py-2 rounded-lg"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+              >
+                <option value="">Select Month</option>
+                {monthNames.map((month) => (
+                  <option key={month} value={month}>{month}</option>
+                ))}
+              </select>
+            </div>
+
+            <div id="print">
+              <h1 className="text-center text-2xl font-bold mb-6">{heading}</h1>
+              
+              {loading && <div className="text-center">Loading...</div>}
+              {error && <div className="text-center text-red-500">{error}</div>}
+              
+              {!loading && !error && (
+                <table className="table-auto w-full border-collapse border border-gray-300">
+                  <thead className="bg-violet-400 text-black">
+                    <tr>
+                      <th className="border border-black p-3">S.No</th>
+                      <th className="border border-black p-3">Date</th>
+                      <th className="border border-black p-3">Inflow</th>
+                      <th className="border border-black p-3">Subs for Last FY</th>
+                      <th className="border border-black p-3">Subs for Current FY</th>
+                      <th className="border border-black p-3">Other Receipts</th>
+                      <th className="border border-black p-3">Total</th>
+                      <th className="border border-black p-3">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inflowData.map((item, index) => (
                       <tr key={index} className="text-center">
                         <td className="border border-black p-3">{item.srNo}</td>
                         <td className="border border-black p-3">{item.date}</td>
                         <td className="border border-black p-3">{item.inflow}</td>
-                        <td className="border border-black p-3">{formatAmount(item.subsPrevYr)}</td>
-                        <td className="border border-black p-3">{formatAmount(item.subsCurYr)}</td>
-                        <td className="border border-black p-3">{formatAmount(item.otherReceipts)}</td>
-                        <td className="border border-black p-3">{formatAmount(rowTotal)}</td>
+                        <td className="border border-black p-3">₹{(item.subsPrevYr || 0).toFixed(2)}</td>
+                        <td className="border border-black p-3">₹{(item.subsCurYr || 0).toFixed(2)}</td>
+                        <td className="border border-black p-3">₹{(item.otherReceipts || 0).toFixed(2)}</td>
+                        <td className="border border-black p-3">₹{(item.total || 0).toFixed(2)}</td>
                         <td className="border border-black p-3">
                           <input
                             type="text"
@@ -145,31 +218,29 @@ const InflowPage = () => {
                           />
                         </td>
                       </tr>
-                    );
-                  })}
-                  {/* Total Row */}
-                  <tr className="text-center font-bold bg-gray-200">
-                    <td className="border border-black p-3" colSpan={2}>
-                      Total
-                    </td>
-                    <td className="border border-black p-3">{columnTotals.inflow}</td>
-                    <td className="border border-black p-3">{formatAmount(columnTotals.subsPrevYr)}</td>
-                    <td className="border border-black p-3">{formatAmount(columnTotals.subsCurYr)}</td>
-                    <td className="border border-black p-3">{formatAmount(columnTotals.otherReceipts)}</td>
-                    <td className="border border-black p-3">{formatAmount(columnTotals.total)}</td>
-                    <td className="border border-black p-3">-</td>
-                  </tr>
-                </tbody>
-              </table>
+                    ))}
+                    <tr className="text-center font-bold bg-gray-200">
+                      <td className="border border-black p-3" colSpan={3}>Total</td>
+                      <td className="border border-black p-3">₹{totals.subsPrevYr.toFixed(2)}</td>
+                      <td className="border border-black p-3">₹{totals.subsCurYr.toFixed(2)}</td>
+                      <td className="border border-black p-3">₹{totals.otherReceipts.toFixed(2)}</td>
+                      <td className="border border-black p-3">₹{totals.total.toFixed(2)}</td>
+                      <td className="border border-black p-3">-</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>
-        </div>
-        <div className="flex justify-center">
-          <button onClick={handlePrint} className="bg-green-500 border border-black text-black px-4 py-2 rounded hover:bg-green-600 hover:scale-110 transition-transform duration-200">
-            Print
-          </button>
-        </div>
+        
+        {!loading && !error && inflowData.length > 0 && (
+          <div className="flex justify-center mt-4">
+            <button onClick={handlePrint} className="bg-green-500 border border-black text-black px-4 py-2 rounded hover:bg-green-600 hover:scale-110 transition-transform duration-200">
+              Print
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

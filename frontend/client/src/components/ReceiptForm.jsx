@@ -52,6 +52,7 @@ const ReceiptForm = () => {
   const receiptTypeOptions = [
     "Interest from Bank",
     "UCS Amount",
+    "UCS Amount Dr",
     "Lifetime Subscriptions",
     "Property on Charge",
     "Matured FD",
@@ -202,12 +203,7 @@ const ReceiptForm = () => {
     setError(null);
   };
 
-  const handleAddReceipt = () => {
-    if (!validateForm()) return;
 
-    setReceipts((prevReceipts) => [...prevReceipts, newReceipt]); 
-    resetForm();
-  };
 
   return (
     <div>

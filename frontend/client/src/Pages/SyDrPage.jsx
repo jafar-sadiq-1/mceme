@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import Header from '../components/Header';
 import axios from 'axios';
 import { AppContext } from '../AppContext/ContextProvider';
+import * as XLSX from 'xlsx';
 
 const formatDate = (date) => {
   const day = date.getDate();
@@ -71,6 +72,58 @@ const SyDrPage = () => {
     window.location.reload(); // Ensure scripts reattach after print
   };
 
+  const handleExportToExcel = () => {
+    // First row will be the title
+    const excelData = [
+      [`List of Last Financial Year Dues on ${currentDate}`],
+      [], // Empty row for spacing
+      // Add headers
+      ['Sr No', 'Name of the Unit', 'Last FY Amount', 'Remarks']
+    ];
+
+    // Add data rows
+    tableData.forEach((item) => {
+      excelData.push([
+        item.srNo,
+        item.unitName,
+        item.amt,
+        remarks[item.srNo - 1] || ''
+      ]);
+    });
+
+    // Add total row
+    excelData.push([
+      '',
+      'Total',
+      totalAmount,
+      ''
+    ]);
+
+    // Create worksheet from the array of arrays
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+    // Style the title
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } } // Merge first row across all columns
+    ];
+
+    // Auto-size columns
+    const colWidths = [
+      { wch: 8 },  // Sr No
+      { wch: 30 }, // Name of the Unit
+      { wch: 15 }, // Last FY Amount
+      { wch: 20 }, // Remarks
+    ];
+    ws['!cols'] = colWidths;
+
+    // Create workbook and append worksheet
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Last FY Dues');
+
+    // Generate Excel file
+    XLSX.writeFile(wb, `Last_FY_Dues_${currentDate.replace(/\s/g, '_')}.xlsx`);
+  };
+
   return (
     <>
       <Header />
@@ -128,9 +181,18 @@ const SyDrPage = () => {
         </div>
         
         {!loading && !error && tableData.length > 0 && (
-          <div className="flex justify-center">
-            <button onClick={handlePrint} className="bg-green-500 border border-black text-black px-4 py-2 rounded hover:bg-green-600 hover:scale-110 transition-transform duration-200">
+          <div className="flex justify-center space-x-4">
+            <button 
+              onClick={handlePrint} 
+              className="bg-green-500 border border-black text-black px-4 py-2 rounded hover:bg-green-600 hover:scale-110 transition-transform duration-200"
+            >
               Print
+            </button>
+            <button 
+              onClick={handleExportToExcel}
+              className="bg-blue-500 border border-black text-black px-4 py-2 rounded hover:bg-blue-600 hover:scale-110 transition-transform duration-200"
+            >
+              Export to Excel
             </button>
           </div>
         )}

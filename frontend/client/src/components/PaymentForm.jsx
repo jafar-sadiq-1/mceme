@@ -42,7 +42,6 @@ const PaymentForm = () => {
     "Purchase",
     "FD",
     "Appreciation Amount",
-    "Interest on FD",
     "Depreciation Amount",
     "Waveoff",
     "Bank Charges",

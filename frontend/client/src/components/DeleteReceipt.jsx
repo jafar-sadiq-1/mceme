@@ -18,7 +18,31 @@ const DeleteReceipt = ({ newReceipt, onSuccess }) => {
 
       const financialYear = getFinancialYear(newReceipt.date);
 
-      // Delete the receipt and handle unit updates
+      // Add better logging for counter voucher deletion attempt
+      console.log('Attempting to delete counter voucher with params:', {
+        year: financialYear,
+        voucherType: 'CE_RV',
+        voucherNo: Number(newReceipt.voucherNo)  // Ensure number type
+      });
+
+      // First, try to delete the corresponding counter voucher
+      try {
+        const counterVoucherResponse = await axios.delete(
+          `http://localhost:5000/api/payments`, {
+            params: {
+              year: financialYear,
+              voucherType: 'CE_RV',
+              voucherNo: Number(newReceipt.voucherNo),  // Ensure number type
+              isCounterVoucher: true  // Add flag to identify counter voucher deletion
+            }
+          }
+        );
+        console.log('Counter voucher deletion response:', counterVoucherResponse.data);
+      } catch (error) {
+        console.error('Counter voucher deletion error:', error.response?.data || error);
+      }
+
+      // Then delete the receipt
       const response = await axios.delete(
         `http://localhost:5000/api/receipts`, {
           params: {

@@ -11,6 +11,92 @@ const UpdateReceipt = ({ newReceipt, onSuccess }) => {
     try {
       const financialYear = getFinancialYear(newReceipt.date);
 
+      // Prepare counter voucher update data
+      let counterVoucherData = {
+        date: new Date(newReceipt.date).toISOString(),
+        voucherType: 'CE_RV',
+        voucherNo: Number(newReceipt.voucherNo),
+        counterVoucherNo: Number(newReceipt.voucherNo),
+        particulars: newReceipt.particulars === "Custom" 
+          ? newReceipt.customParticulars 
+          : newReceipt.particulars,
+        paymentType: "Counter Entry",
+        paymentDescription: `Counter entry for receipt voucher ${newReceipt.voucherNo}`,
+        method: "none",
+        financialYear: getFinancialYear(newReceipt.date),
+        emeJournalFund: 0,
+        fdr: 0,
+        syDr: 0,
+        cash: 0,
+        bank: 0,
+        syCr: 0,
+        property: 0
+      };
+
+      let remainingReceiptAmount = Number(newReceipt[newReceipt.method] || 0);
+
+      // Handle different receipt types for counter voucher
+      switch(newReceipt.receiptType) {
+        case 'Interest on FD':
+        case 'UCS Amount':
+        case 'Lifetime Subscription':
+        case 'Property on Charge':
+          counterVoucherData.emeJournalFund = remainingReceiptAmount;
+          break;
+
+        case 'Matured FD':
+          const fdrResponse = await axios.get(`http://localhost:5000/api/fdrs/${newReceipt.fdrNo}`);
+          const fdrData = fdrResponse.data;
+          counterVoucherData.fdr = fdrData.amount;
+          counterVoucherData.emeJournalFund = fdrData.interestAmount;
+          break;
+
+        case 'UCS Amount Dr':
+          if (newReceipt.particulars !== "Custom") {
+            const unitResponse = await axios.get(`http://localhost:5000/api/units/${newReceipt.particulars}`);
+            const unit = unitResponse.data;
+
+            if (unit.lastFinancialYearAmount > 0) {
+              const amountToReduceLastFY = Math.min(unit.lastFinancialYearAmount, remainingReceiptAmount);
+              counterVoucherData.syDr = amountToReduceLastFY;
+              
+              const remainingForCurrentFY = remainingReceiptAmount - amountToReduceLastFY;
+              if (remainingForCurrentFY > 0) {
+                counterVoucherData.emeJournalFund = remainingForCurrentFY;
+              }
+            } else {
+              counterVoucherData.emeJournalFund = remainingReceiptAmount;
+            }
+          }
+          break;
+
+        default:
+          counterVoucherData = null;
+      }
+
+      // Update the counter voucher if needed
+      if (counterVoucherData) {
+        try {
+          console.log('Updating counter voucher with data:', counterVoucherData);
+
+          const finalCounterVoucherData = {
+            ...counterVoucherData,
+            financialYear: counterVoucherData.financialYear.startsWith('FY') 
+              ? counterVoucherData.financialYear 
+              : `FY${counterVoucherData.financialYear}`,
+          };
+
+          await axios.put(
+            `http://localhost:5000/api/payments?year=${financialYear}`,
+            finalCounterVoucherData
+          );
+          console.log('Counter voucher updated successfully');
+        } catch (error) {
+          console.error('Counter voucher update error:', error.response?.data);
+          throw error;
+        }
+      }
+
       // If not custom particulars, handle unit history updates
       if (newReceipt.particulars !== "Custom") {
         // Fetch the unit
@@ -152,7 +238,7 @@ const UpdateReceipt = ({ newReceipt, onSuccess }) => {
                           error.response?.data?.error || 
                           "Error updating receipt";
       console.error("Full error details:", error.response?.data);
-      alert(errorMessage);
+      setError(errorMessage);
     }
   };
 
