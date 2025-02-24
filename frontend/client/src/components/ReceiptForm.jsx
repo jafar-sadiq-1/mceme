@@ -64,6 +64,7 @@ const ReceiptForm = () => {
   const [newReceipt, setNewReceipt] = useState(initialState);
   const [isCustomSelected, setIsCustomSelected] = useState(false);
   const [error, setError] = useState(null);
+  const [createCounterVoucher, setCreateCounterVoucher] = useState(true); // Add this state
 
   const fetchLastVoucherNo = async (date, voucherType) => {
     try {
@@ -326,9 +327,22 @@ const ReceiptForm = () => {
             />
         </div>
 
+        <div className="mb-4">
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={createCounterVoucher}
+              onChange={(e) => setCreateCounterVoucher(e.target.checked)}
+              className="form-checkbox h-4 w-4 text-blue-600"
+            />
+            <span className="text-gray-700">Create Counter Voucher</span>
+          </label>
+        </div>
+
         <div className="flex space-x-4 mt-4">
           <AddReceipt 
             newReceipt={newReceipt} 
+            createCounterVoucher={createCounterVoucher}
             onSuccess={() => {
               resetForm();
             }}

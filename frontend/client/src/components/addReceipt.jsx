@@ -3,7 +3,7 @@ import axios from 'axios';
 import { AppContext } from '../AppContext/ContextProvider';
 import { getFinancialYear } from '../utils/financialYearHelper';
 
-const AddReceipt = ({ newReceipt, onSuccess, validateForm }) => {
+const AddReceipt = ({ newReceipt, createCounterVoucher, onSuccess, validateForm }) => {
   const { setReceipts } = useContext(AppContext);
   const [error, setError] = useState("");
   
@@ -17,70 +17,73 @@ const AddReceipt = ({ newReceipt, onSuccess, validateForm }) => {
       let remainingReceiptAmount = Number(newReceipt[newReceipt.method] || 0);
       const financialYear = getFinancialYear(newReceipt.date);
 
-      // Prepare base counter voucher data with all required fields
-      let counterVoucherData = {
-        date: new Date(newReceipt.date).toISOString(),
-        voucherType: 'CE_RV',
-        voucherNo: Number(newReceipt.voucherNo),
-        counterVoucherNo: Number(newReceipt.voucherNo),
-        particulars: newReceipt.particulars === "Custom" 
-          ? newReceipt.customParticulars 
-          : newReceipt.particulars,
-        paymentType: "Counter Entry",  // Ensure this is set
-        customPaymentType: "",
-        paymentDescription: `Counter entry for receipt voucher ${newReceipt.voucherNo}`,
-        method: "none",
-        financialYear: getFinancialYear(newReceipt.date),
-        emeJournalFund: 0,
-        fdr: 0,
-        syDr: 0,
-        cash: 0,
-        bank: 0,
-        syCr: 0,
-        property: 0
-      };
+      // Only create counter voucher if checkbox is checked
+      let counterVoucherData = null;
+      if (createCounterVoucher) {
+        counterVoucherData = {
+          date: new Date(newReceipt.date).toISOString(),
+          voucherType: 'CE_RV',
+          voucherNo: Number(newReceipt.voucherNo),
+          counterVoucherNo: Number(newReceipt.voucherNo),
+          particulars: newReceipt.particulars === "Custom" 
+            ? newReceipt.customParticulars 
+            : newReceipt.particulars,
+          paymentType: "Counter Entry",  // Ensure this is set
+          customPaymentType: "",
+          paymentDescription: `Counter entry for receipt voucher ${newReceipt.voucherNo}`,
+          method: "none",
+          financialYear: getFinancialYear(newReceipt.date),
+          emeJournalFund: 0,
+          fdr: 0,
+          syDr: 0,
+          cash: 0,
+          bank: 0,
+          syCr: 0,
+          property: 0
+        };
 
-      // Handle different receipt types
-      switch(newReceipt.receiptType) {
-        case 'Interest on FD':
-        case 'UCS Amount':
-        case 'Lifetime Subscription':
-        case 'Property on Charge':
-          counterVoucherData.emeJournalFund = remainingReceiptAmount;
-          break;
+        // Handle different receipt types only if counter voucher is enabled
+        switch(newReceipt.receiptType) {
+          case 'Interest on FD':
+          case 'UCS Amount':
+          case 'Lifetime Subscription':
+          case 'Property on Charge':
+            counterVoucherData.emeJournalFund = remainingReceiptAmount;
+            break;
 
-        case 'Matured FD':
-          // Fetch FDR details
-          const fdrResponse = await axios.get(`http://localhost:5000/api/fdrs/${newReceipt.fdrNo}`);
-          const fdrData = fdrResponse.data;
-          
-          // Use amount instead of principalAmount to match FDR schema
-          counterVoucherData.fdr = fdrData.amount;
-          counterVoucherData.emeJournalFund = fdrData.interestAmount;
-          break;
+          case 'Matured FD':
+            // Fetch FDR details
+            const fdrResponse = await axios.get(`http://localhost:5000/api/fdrs/${newReceipt.fdrNo}`);
+            const fdrData = fdrResponse.data;
+            
+            // Use amount instead of principalAmount to match FDR schema
+            counterVoucherData.fdr = fdrData.amount;
+            counterVoucherData.emeJournalFund = fdrData.interestAmount;
+            break;
 
-        case 'UCS Amount Dr':
-          if (newReceipt.particulars !== "Custom") {
-            const unitResponse = await axios.get(`http://localhost:5000/api/units/${newReceipt.particulars}`);
-            const unit = unitResponse.data;
+          case 'UCS Amount Dr':
+            if (newReceipt.particulars !== "Custom") {
+              const unitResponse = await axios.get(`http://localhost:5000/api/units/${newReceipt.particulars}`);
+              const unit = unitResponse.data;
 
-            if (unit.lastFinancialYearAmount > 0) {
-              const amountToReduceLastFY = Math.min(unit.lastFinancialYearAmount, remainingReceiptAmount);
-              counterVoucherData.syDr = amountToReduceLastFY;
-              
-              const remainingForCurrentFY = remainingReceiptAmount - amountToReduceLastFY;
-              if (remainingForCurrentFY > 0) {
-                counterVoucherData.emeJournalFund = remainingForCurrentFY;
+              if (unit.lastFinancialYearAmount > 0) {
+                const amountToReduceLastFY = Math.min(unit.lastFinancialYearAmount, remainingReceiptAmount);
+                counterVoucherData.syDr = amountToReduceLastFY;
+                
+                const remainingForCurrentFY = remainingReceiptAmount - amountToReduceLastFY;
+                if (remainingForCurrentFY > 0) {
+                  counterVoucherData.emeJournalFund = remainingForCurrentFY;
+                }
+              } else {
+                counterVoucherData.emeJournalFund = remainingReceiptAmount;
               }
-            } else {
-              counterVoucherData.emeJournalFund = remainingReceiptAmount;
             }
-          }
-          break;
+            break;
 
-        default:
-          // No counter voucher needed
-          counterVoucherData = null;
+          default:
+            // No counter voucher needed
+            counterVoucherData = null;
+        }
       }
 
       // Skip unit update if it's a custom particular
@@ -198,8 +201,8 @@ const AddReceipt = ({ newReceipt, onSuccess, validateForm }) => {
       
       console.log('Server response:', response.data); // Add this line for debugging
 
-      // Create counter voucher if needed
-      if (counterVoucherData) {
+      // Create counter voucher only if checkbox is checked and counterVoucherData exists
+      if (createCounterVoucher && counterVoucherData) {
         try {
           console.log('Sending counter voucher data:', counterVoucherData);
           

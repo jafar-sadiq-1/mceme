@@ -182,7 +182,7 @@ const ReceiptPage = () => {
                   <tbody>
                   {receipts.map((receipt, index) => (
                     <tr key={index} className={index % 2 === 0 ? "bg-violet-50" : "bg-white"}>
-                      <td className="px-4 py-2 border border-blacktext-center">
+                      <td className="px-4 py-2 border border-black text-center">
                         {new Date(receipt.date).toLocaleDateString("en-GB")}
                       </td>
                       <td className="px-4 py-2 border border-black">
@@ -192,7 +192,7 @@ const ReceiptPage = () => {
                         {receipt.particulars === "Custom" ? receipt.customParticulars : receipt.particulars}
                       </td>
                       {[
-                        "cash", "bank", "fdr", "syDr", "syCr", "property", "emeJournalFund"
+                        "cash", "bank", "fdr", "sydr", "sycr", "property", "eme_journal_fund"
                       ].map((key) => (
                         <td key={key} className="px-4 py-2 border border-black text-right">
                           {receipt[key]||""}
@@ -207,7 +207,7 @@ const ReceiptPage = () => {
                     <td className="px-4 py-2 border border-black text-right">{totals.bank.toFixed(2)}</td>
                     <td className="px-4 py-2 border border-black text-right">{totals.fdr.toFixed(2)}</td>
                     <td className="px-4 py-2 border border-black text-right">{totals.sydr.toFixed(2)}</td>
-                    <td className="px-4 py-2 border border-blacktext-right">{totals.sycr.toFixed(2)}</td>
+                    <td className="px-4 py-2 border border-black text-right">{totals.sycr.toFixed(2)}</td>
                     <td className="px-4 py-2 border border-black text-right">{totals.property.toFixed(2)}</td>
                     <td className="px-4 py-2 border border-black text-right">{totals.eme_journal_fund.toFixed(2)}</td>
                   </tr>

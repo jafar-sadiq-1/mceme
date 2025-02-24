@@ -12,7 +12,13 @@ const PaymentsPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [totals, setTotals] = useState({
-    cash: 0, bank: 0, fdr: 0, syDr: 0, syCr: 0, property: 0, emeJournalFund: 0
+    cash: 0,
+    bank: 0,
+    fdr: 0,
+    syDr: 0,  // Changed from sydr
+    syCr: 0,  // Changed from sycr
+    property: 0,
+    emeJournalFund: 0  // Changed from eme_journal_fund
   });
 
   const financialYears = getFinancialYearsList(10);

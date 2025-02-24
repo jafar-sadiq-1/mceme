@@ -6,6 +6,22 @@ import { getFinancialYear } from '../utils/financialYearHelper';
 const DeletePayment = ({ newPayment, onSuccess }) => {
   const { setPayments } = useContext(AppContext);
 
+  const deleteCounterVoucher = async (financialYear, voucherNo) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/receipts`, {
+        params: {
+          year: financialYear,
+          voucherType: 'CE_PV',  // Counter vouchers are always CE_PV type
+          voucherNo: voucherNo
+        }
+      });
+      console.log('Counter voucher deleted successfully');
+    } catch (error) {
+      console.error('Error deleting counter voucher:', error);
+      throw new Error('Failed to delete counter voucher');
+    }
+  };
+
   const handleDeletePayment = async () => {
     try {
       if (!newPayment || !newPayment.date) {
@@ -18,7 +34,7 @@ const DeletePayment = ({ newPayment, onSuccess }) => {
 
       const financialYear = getFinancialYear(newPayment.date);
 
-      // Include method and payment type in delete request
+      // First delete the payment
       const response = await axios.delete(
         `http://localhost:5000/api/payments`, {
           params: {
@@ -31,6 +47,17 @@ const DeletePayment = ({ newPayment, onSuccess }) => {
           }
         }
       );
+
+      // If payment is deleted successfully, try to delete its counter voucher
+      if (response.data) {
+        try {
+          await deleteCounterVoucher(financialYear, newPayment.voucherNo);
+        } catch (counterError) {
+          console.warn('Counter voucher deletion failed:', counterError);
+          // Don't throw error if counter voucher deletion fails
+          // as it might not exist
+        }
+      }
 
       console.log('Delete response:', response.data);
       onSuccess();
