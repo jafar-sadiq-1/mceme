@@ -11,7 +11,7 @@ const DeletePayment = ({ newPayment, onSuccess }) => {
       await axios.delete(`http://localhost:5000/api/receipts`, {
         params: {
           year: financialYear,
-          voucherType: 'CE_PV',  // Counter vouchers are always CE_PV type
+          voucherType: 'CE_PV',  
           voucherNo: voucherNo
         }
       });
