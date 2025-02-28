@@ -21,6 +21,16 @@ const PaymentsPage = () => {
     emeJournalFund: 0  // Changed from eme_journal_fund
   });
 
+  // Add new state for receipt totals
+  const [displayReceipts, setDisplayReceipts] = useState({
+    cash: 0,
+    bank: 0,
+    fdr: 0,
+    syDr: 0,
+    syCr: 0,
+    property: 0
+  });
+
   const financialYears = getFinancialYearsList(10);
   const abortControllerRef = useRef(null);
 
@@ -39,32 +49,47 @@ const PaymentsPage = () => {
     setLoading(true);
     setError(null);
     try {
-      
-      const response = await axios.get("http://localhost:5000/api/payments", {
-        params: { year, month },
-        signal: abortControllerRef.current.signal,
-      });
-      setPayments(response.data);
-
-      // Calculate totals efficiently
-      const newTotals = response.data.reduce(
-        (acc, payment) => ({
-          cash: acc.cash + (Number(payment.cash) || 0),
-          bank: acc.bank + (Number(payment.bank) || 0),
-          fdr: acc.fdr + (Number(payment.fdr) || 0),
-          syDr: acc.syDr + (Number(payment.syDr) || 0),
-          syCr: acc.syCr + (Number(payment.syCr) || 0),
-          property: acc.property + (Number(payment.property) || 0),
-          emeJournalFund: acc.emeJournalFund + (Number(payment.emeJournalFund) || 0),
+      // Fetch both payments and receipts
+      const [paymentsResponse, receiptsResponse] = await Promise.all([
+        axios.get("http://localhost:5000/api/payments", {
+          params: { year, month },
+          signal: abortControllerRef.current.signal,
         }),
-        { cash: 0, bank: 0, fdr: 0, syDr: 0, syCr: 0, property: 0, emeJournalFund: 0 }
-      );
+        axios.get("http://localhost:5000/api/receipts", {
+          params: { year, month }
+        })
+      ]);
 
-      setTotals(newTotals);
+      setPayments(paymentsResponse.data);
+
+      // Calculate receipt totals
+      const receiptTotals = receiptsResponse.data.reduce((sum, record) => ({
+        cash: sum.cash + (Number(record.cash) || 0),
+        bank: sum.bank + (Number(record.bank) || 0),
+        fdr: sum.fdr + (Number(record.fdr) || 0),
+        syDr: sum.syDr + (Number(record.sydr) || 0),
+        syCr: sum.syCr + (Number(record.sycr) || 0),
+        property: sum.property + (Number(record.property) || 0),
+      }), { cash: 0, bank: 0, fdr: 0, syDr: 0, syCr: 0, property: 0 });
+
+      setDisplayReceipts(receiptTotals);
+
+      // Calculate payment totals
+      const paymentTotals = paymentsResponse.data.reduce((acc, payment) => ({
+        cash: acc.cash + (Number(payment.cash) || 0),
+        bank: acc.bank + (Number(payment.bank) || 0),
+        fdr: acc.fdr + (Number(payment.fdr) || 0),
+        syDr: acc.syDr + (Number(payment.syDr) || 0),
+        syCr: acc.syCr + (Number(payment.syCr) || 0),
+        property: acc.property + (Number(payment.property) || 0),
+        emeJournalFund: acc.emeJournalFund + (Number(payment.emeJournalFund) || 0),
+      }), { cash: 0, bank: 0, fdr: 0, syDr: 0, syCr: 0, property: 0, emeJournalFund: 0 });
+
+      setTotals(paymentTotals);
     } catch (error) {
       if (!axios.isCancel(error)) {
-        setError("Failed to fetch payments. Please try again later.");
-        console.error("Error fetching payments:", error);
+        setError("Failed to fetch data. Please try again later.");
+        console.error("Error fetching data:", error);
       }
     } finally {
       setLoading(false);
@@ -205,6 +230,27 @@ const PaymentsPage = () => {
                         {totals[key].toFixed(2)}
                       </td>
                     ))}
+                  </tr>
+                  {/* Add Balance row */}
+                  <tr className="bg-violet-200 font-bold">
+                    <td className="px-4 py-2 border border-black" colSpan="3">Balance</td>
+                    {["cash", "bank", "fdr", "syDr", "syCr", "property"].map(key => (
+                      <td key={key} className="px-4 py-2 border border-black text-right">
+                        {(displayReceipts[key] - totals[key]).toFixed(2)}
+                      </td>
+                    ))}
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
+                  </tr>
+
+                  {/* Add G/Total row */}
+                  <tr className="bg-violet-200 font-bold">
+                    <td className="px-4 py-2 border border-black" colSpan="3">G/Total</td>
+                    {["cash", "bank", "fdr", "syDr", "syCr", "property"].map(key => (
+                      <td key={key} className="px-4 py-2 border border-black text-right">
+                        {displayReceipts[key].toFixed(2)}
+                      </td>
+                    ))}
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
                   </tr>
                 </tbody>
               </table>

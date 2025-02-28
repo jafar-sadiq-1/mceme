@@ -20,6 +20,7 @@ const ReceiptPage = () => {
     property: 0,
     eme_journal_fund: 0
   });
+  const [totalEmeJournalFund, setTotalEmeJournalFund] = useState(0);
 
   const financialYears = getFinancialYearsList(10); // Get last 10 financial years
 
@@ -38,6 +39,24 @@ const ReceiptPage = () => {
           }
         );
         setReceipts(response.data);
+
+        // Fetch payments to calculate EME Journal Fund total
+        const paymentsResponse = await axios.get(
+          "http://localhost:5000/api/payments", 
+          {
+            params: {
+              year: selectedFY,
+              month: selectedMonth
+            }
+          }
+        );
+        
+        // Calculate total EME Journal Fund from payments
+        const totalSum = paymentsResponse.data.reduce(
+          (sum, record) => sum + (record.emeJournalFund || 0), 
+          0
+        );
+        setTotalEmeJournalFund(totalSum);
         
         // Calculate totals
         const newTotals = response.data.reduce((acc, receipt) => ({
@@ -54,8 +73,8 @@ const ReceiptPage = () => {
         
         setTotals(newTotals);
       } catch (error) {
-        setError("Failed to fetch receipts. Please try again later.");
-        console.error("Error fetching receipts:", error);
+        setError("Failed to fetch data. Please try again later.");
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
@@ -210,6 +229,31 @@ const ReceiptPage = () => {
                     <td className="px-4 py-2 border border-black text-right">{totals.sycr.toFixed(2)}</td>
                     <td className="px-4 py-2 border border-black text-right">{totals.property.toFixed(2)}</td>
                     <td className="px-4 py-2 border border-black text-right">{totals.eme_journal_fund.toFixed(2)}</td>
+                  </tr>
+                  <tr className="bg-violet-200 font-bold">
+                    <td className="px-4 py-2 border border-black" colSpan="3">Balance</td>
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
+                    <td className="px-4 py-2 border border-black text-right">
+                      {(totalEmeJournalFund - totals.eme_journal_fund).toFixed(2)}
+                    </td>
+                  </tr>
+
+                  <tr className="bg-violet-200 font-bold">
+                    <td className="px-4 py-2 border border-black" colSpan="3">G / Total</td>
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
+                    <td className="px-4 py-2 border border-black text-right">0.00</td>
+                    <td className="px-4 py-2 border border-black text-right">
+                      {totalEmeJournalFund.toFixed(2)}
+                    </td>
                   </tr>
                   </tbody>
                 </table>

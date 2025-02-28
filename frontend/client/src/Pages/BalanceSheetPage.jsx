@@ -1,48 +1,161 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Header from '../components/Header';
+import axios from 'axios';
+import { getFinancialYearsList, getCurrentFinancialYear } from '../utils/financialYearHelper';
 
 export default function BalanceSheet() {
+  const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
+  const [selectedMonth, setSelectedMonth] = useState('');
+
+  const financialYears = getFinancialYearsList(10);
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June", 
+    "July", "August", "September", "October", "November", "December"
+  ];
+  const months = monthNames.map((month, index) => ({ number: index + 1, name: month }));
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [receiptTotals, setReceiptTotals] = useState({
+    cash: 0,
+    bank: 0,
+    fdr: 0,
+    sydr: 0,
+    sycr: 0,
+    property: 0,
+    eme_journal_fund: 0
+  });
+  const [paymentTotals, setPaymentTotals] = useState({
+    cash: 0,
+    bank: 0,
+    fdr: 0,
+    syDr: 0,
+    syCr: 0,
+    property: 0,
+    emeJournalFund: 0
+  });
+
   useEffect(() => {
-      const style = document.createElement("style");
-      style.innerHTML = `
-       @media print {
-        body::before {
-          content: "EME Journal";
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%) rotate(-30deg);
-          font-size: 80px;
-          font-weight: bold;
-          color: rgba(0, 0, 0, 0.1);
-          z-index: 1000;
-          pointer-events: none;
-          white-space: nowrap;
-          mix-blend-mode: multiply; /* Ensures it blends with table background */
-        }
+    const style = document.createElement("style");
+    style.innerHTML = `
+     @media print {
+      body::before {
+        content: "EME Journal";
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-30deg);
+        font-size: 80px;
+        font-weight: bold;
+        color: rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        pointer-events: none;
+        white-space: nowrap;
+        mix-blend-mode: multiply; /* Ensures it blends with table background */
       }
-      `;
-      document.head.appendChild(style);
-      return () => {
-        document.head.removeChild(style); // Cleanup
-      };
-    }, []);
-    
+    }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style); // Cleanup
+    };
+  }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch both receipts and payments
+        const [receiptsResponse, paymentsResponse] = await Promise.all([
+          axios.get('http://localhost:5000/api/receipts', {
+            params: { year: selectedFY, month: selectedMonth }
+          }),
+          axios.get('http://localhost:5000/api/payments', {
+            params: { year: selectedFY, month: selectedMonth }
+          })
+        ]);
+
+        // Calculate receipt totals
+        const rTotals = receiptsResponse.data.reduce((acc, receipt) => ({
+          cash: acc.cash + (Number(receipt.cash) || 0),
+          bank: acc.bank + (Number(receipt.bank) || 0),
+          fdr: acc.fdr + (Number(receipt.fdr) || 0),
+          sydr: acc.sydr + (Number(receipt.sydr) || 0),
+          sycr: acc.sycr + (Number(receipt.sycr) || 0),
+          property: acc.property + (Number(receipt.property) || 0),
+          eme_journal_fund: acc.eme_journal_fund + (Number(receipt.eme_journal_fund) || 0),
+        }), { cash: 0, bank: 0, fdr: 0, sydr: 0, sycr: 0, property: 0, eme_journal_fund: 0 });
+
+        // Calculate payment totals
+        const pTotals = paymentsResponse.data.reduce((acc, payment) => ({
+          cash: acc.cash + (Number(payment.cash) || 0),
+          bank: acc.bank + (Number(payment.bank) || 0),
+          fdr: acc.fdr + (Number(payment.fdr) || 0),
+          syDr: acc.syDr + (Number(payment.syDr) || 0),
+          syCr: acc.syCr + (Number(payment.syCr) || 0),
+          property: acc.property + (Number(payment.property) || 0),
+          emeJournalFund: acc.emeJournalFund + (Number(payment.emeJournalFund) || 0),
+        }), { cash: 0, bank: 0, fdr: 0, syDr: 0, syCr: 0, property: 0, emeJournalFund: 0 });
+
+        setReceiptTotals(rTotals);
+        setPaymentTotals(pTotals);
+
+      } catch (error) {
+        setError("Failed to fetch data");
+        console.error("Error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedFY, selectedMonth]);
+
+  // Calculate balance sheet entries
   const assets = [
-    { name: "Cash in Hand", amount: 500000000},
-    { name: "Cash in Bank", amount: 20000 },
-    { name: "FDR", amount: 15000 },
-    { name: "Sy Dr", amount: 10000 },
-    { name: "Property", amount: 75000 },
+    { 
+      name: "Cash in Hand", 
+      amount: Math.abs(receiptTotals.cash - paymentTotals.cash)
+    },
+    { 
+      name: "Cash in Bank", 
+      amount: Math.abs(receiptTotals.bank - paymentTotals.bank)
+    },
+    { 
+      name: "FDR", 
+      amount: Math.abs(receiptTotals.fdr - paymentTotals.fdr)
+    },
+    { 
+      name: "Sy Dr", 
+      amount: Math.abs(receiptTotals.sydr - paymentTotals.syDr)
+    },
+    { 
+      name: "Property", 
+      amount: Math.abs(receiptTotals.property - paymentTotals.property)
+    }
   ];
 
   const liabilities = [
-    { name: "EME Journal Fund", amount: 25000000 },
-    { name: "Property", amount: 50000 },
-    { name:"Sy Cr" , amount: 0}
+    { 
+      name: "EME Journal Fund", 
+      amount: Math.abs(receiptTotals.eme_journal_fund - paymentTotals.emeJournalFund)
+    },
+    { 
+      name: "Property", 
+      amount: Math.abs(receiptTotals.property - paymentTotals.property)
+    },
+    { 
+      name: "Sy Cr", 
+      amount: Math.abs(receiptTotals.sycr - paymentTotals.syCr)
+    }
   ];
 
   const maxRows = Math.max(assets.length, liabilities.length);
+
+  // Calculate totals for footer row
+  const totalAssets = assets.reduce((sum, item) => sum + item.amount, 0);
+  const totalLiabilities = liabilities.reduce((sum, item) => sum + item.amount, 0);
 
   const handlePrint = () => {
     const printContents = document.getElementById("print").innerHTML;
@@ -60,15 +173,51 @@ export default function BalanceSheet() {
     window.location.reload(); // Ensure scripts reattach after print
   };
 
+  let heading = "Balance Sheet";
+  if (selectedFY && selectedMonth) {
+    heading = `Balance Sheet for ${selectedMonth} ${selectedFY}`;
+  } else if (selectedFY) {
+    heading = `Balance Sheet for ${selectedFY}`;
+  }
+
   return (
     <>
     <div className="min-h-screen bg-gradient-to-r from-teal-100 to-violet-100 font-serif">
       <Header/>
-      <div className="mt-8 mb-8 flex justify-center">
+      <div className="mb-8 flex justify-center mt-11">
         <div className="bg-white shadow-md rounded-lg p-6 w-auto">
+          {/* Move filters inside the white box */}
+          <div className="mb-6 flex justify-center">
+            <div className="flex space-x-4">
+              <select
+                className="border px-4 py-2 rounded-lg"
+                value={selectedFY}
+                onChange={(e) => setSelectedFY(e.target.value)}
+              >
+                {financialYears.map((fy) => (
+                  <option key={fy} value={fy}>{fy}</option>
+                ))}
+              </select>
+
+              <select
+                className="border px-4 py-2 rounded-lg"
+                value={selectedMonth || ""}
+                onChange={(e) => setSelectedMonth(e.target.value || null)}
+              >
+                <option value="">Select Month</option>
+                {months.map((month) => (
+                  <option key={month.number} value={month.name}>{month.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {loading && <div className="text-center mb-4">Loading...</div>}
+          {error && <div className="text-red-500 text-center mb-4">{error}</div>}
+
           <div id="print">
             <h2 className="text-2xl font-bold text-black mb-4 text-center">
-              Balance Sheet
+              {heading}
             </h2>
             <table className="table-auto w-full border-collapse border border-gray-300" style={{ fontFamily: 'Times New Roman, serif' }}>
               <thead>
@@ -101,22 +250,16 @@ export default function BalanceSheet() {
                     </td>
                   </tr>
                 ))}
-                <tr className="bg-white">
-                    {/* Assets */}
-                    <td className="px-4 py-2 border border-gray-300">
-                      Total
-                    </td>
-                    <td className="px-4 py-2 border border-gray-300 text-right">
-                      0
-                    </td>
-                    {/* Liabilities */}
-                    <td className="px-4 py-2 border border-gray-300">
-                      Total
-                    </td>
-                    <td className="px-4 py-2 border border-gray-300 text-right">
-                      0
-                    </td>
-                  </tr>
+                <tr className="bg-violet-200 font-bold">
+                  <td className="px-4 py-2 border border-gray-300">Total</td>
+                  <td className="px-4 py-2 border border-gray-300 text-right">
+                    {totalAssets.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2 border border-gray-300">Total</td>
+                  <td className="px-4 py-2 border border-gray-300 text-right">
+                    {totalLiabilities.toLocaleString()}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
