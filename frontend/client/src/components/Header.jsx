@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { jwtDecode } from "jwt-decode";
 import { UserIcon } from '@heroicons/react/solid';
 import { Bell } from 'lucide-react';
@@ -70,7 +70,7 @@ const Header = () => {
         {/* Right Section: Bell Icon & Profile Dropdown */}
         <div className="relative flex items-center space-x-4">
           
-          {/* Bell Icon */}
+          {/* Bell Icon - Updated onClick handler */}
           <div
             className="relative p-2 rounded-full hover:text-teal-600 transition duration-200 cursor-pointer transform hover:scale-110"
             onClick={() => navigate('/notifications')}

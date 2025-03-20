@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import './index.css';
 import TokenExpiry from './TokenExpiry';
@@ -15,11 +14,11 @@ import ComparisionPage from './Pages/ComparisionPage';
 import SyDrPage from './Pages/SyDrPage';
 import UsersAndRequestPage from './Pages/UsersAndRequestPage';
 import ChangePasswordPage from './Pages/ChangePasswordPage';
-import Header from './components/Header';
 import UnitsPage from './Pages/UnitsPage';
 import AllPaymentsPage from './Pages/AllPaymentsPage';
 import AllReceiptsPage from './Pages/AllReceiptsPage';
 import ProtectedRoute from './Pages/ProtectedRoute';
+import NotificationsPage from './Pages/notificationsPage';
 
 function App() {
   TokenExpiry();
@@ -43,6 +42,7 @@ function App() {
           <Route path='/units' element={<ProtectedRoute><UnitsPage /></ProtectedRoute>} />
           <Route path='/allpayments' element={<ProtectedRoute><AllPaymentsPage /></ProtectedRoute>} />
           <Route path='/allreceipts' element={<ProtectedRoute><AllReceiptsPage /></ProtectedRoute>} />
+          <Route path='/notifications' element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
         </Routes>
       </div>
     </Router>

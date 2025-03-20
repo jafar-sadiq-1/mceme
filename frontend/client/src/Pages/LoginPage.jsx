@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FaUser, FaLock, FaPhoneAlt, FaEnvelope, FaIdCard, FaEye, FaEyeSlash } from "react-icons/fa"; // Import icons
 import backgroundImage from "../assets/image.jpg";
+import { CodeSquare } from "lucide-react";
 
 const LoginPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -70,6 +71,8 @@ const LoginPage = () => {
           localStorage.setItem("jwtToken", token);
          //  // Store JWT token in localStorage
          const decoded = jwtDecode(token);
+         console.log("Hello");
+         console.log(decoded);
         // console.log(decoded);
           setMessage("Login successful!");
           
