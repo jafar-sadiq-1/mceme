@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
 import axios from 'axios';
 import { getFinancialYearsList, getCurrentFinancialYear } from '../utils/financialYearHelper';
+import * as XLSX from 'xlsx';
 
 const ComparisionPage = () => {
   
@@ -174,6 +175,34 @@ const ComparisionPage = () => {
     window.location.reload(); // Ensure scripts reattach after print
   };
 
+  const handleExcelExport = () => {
+    const excelData = leftfunds.map((fund, index) => ({
+      'S No': index + 1,
+      'Name of Fund': fund.name,
+      [`Assets (${selectedMonth1} ${selectedFY1})`]: fund.assets.toFixed(2),
+      [`Liabilities (${selectedMonth1} ${selectedFY1})`]: fund.liabilities.toFixed(2),
+      'Income in Present Month': fund.income.toFixed(2),
+      'Expenditure in Present Month': fund.expenditure.toFixed(2),
+      [`Assets (${selectedMonth2} ${selectedFY2})`]: rightfunds[index]?.assets.toFixed(2) || '0.00',
+      [`Liabilities (${selectedMonth2} ${selectedFY2})`]: rightfunds[index]?.liabilities.toFixed(2) || '0.00',
+      'Increase': Math.max(
+        ((rightfunds[index]?.assets - rightfunds[index]?.liabilities) - 
+        (fund.assets - fund.liabilities)),
+        0
+      ).toFixed(2),
+      'Decrease': Math.max(
+        ((fund.assets - fund.liabilities) - 
+        (rightfunds[index]?.assets - rightfunds[index]?.liabilities)),
+        0
+      ).toFixed(2)
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Balance Sheet Comparison');
+    XLSX.writeFile(wb, `Balance_Sheet_Comparison_${selectedMonth1}_${selectedFY1}_vs_${selectedMonth2}_${selectedFY2}.xlsx`);
+  };
+
   return (
     <>
       <Header />
@@ -313,9 +342,12 @@ const ComparisionPage = () => {
           </div>
         )}
 
-        <div className="flex justify-center mt-6">
+        <div className="flex justify-center mt-6 gap-4">
           <button onClick={handlePrint} className="bg-green-500 border border-black text-black px-4 py-2 rounded hover:bg-green-600 hover:scale-110 transition-transform duration-200">
             Print
+          </button>
+          <button onClick={handleExcelExport} className="bg-blue-500 border border-black text-black px-4 py-2 rounded hover:bg-blue-600 hover:scale-110 transition-transform duration-200">
+            Export to Excel
           </button>
         </div>
       </div>

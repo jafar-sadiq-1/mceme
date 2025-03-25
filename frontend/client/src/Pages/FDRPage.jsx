@@ -3,6 +3,7 @@ import axios from "axios";
 import FDRForm from "../components/FDRForm";
 import { AppContext } from "../AppContext/ContextProvider";
 import Header from '../components/Header';
+import * as XLSX from 'xlsx';
 
 export default function FDRPage() {
   const { fdrs, setFdrs } = useContext(AppContext);
@@ -66,6 +67,26 @@ export default function FDRPage() {
     window.location.reload();
   };
 
+  const handleExcelExport = () => {
+    const excelData = fdrs.map(fdr => ({
+      'FDR No': fdr.fdrNo,
+      'Date of Deposit': new Date(fdr.dateOfDeposit).toLocaleDateString("en-GB"),
+      'Amount': fdr.amount,
+      'Maturity Value': fdr.maturityValue,
+      'Maturity Date': new Date(fdr.maturityDate).toLocaleDateString("en-GB"),
+      'Duration': fdr.duration,
+      'Int Rate %': fdr.intRate,
+      'Interest Amount': fdr.interestAmount,
+      'Bank': fdr.bank,
+      'Remarks': fdr.remarks || ''
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    XLSX.utils.book_append_sheet(wb, ws, 'FDRs');
+    XLSX.writeFile(wb, `FDR_Details_${new Date().toLocaleDateString()}.xlsx`);
+  };
+
   return (
     <>
       <Header/>
@@ -119,8 +140,13 @@ export default function FDRPage() {
               </tbody>
             </table>
           </div>
-          <div className="flex justify-center mt-4">
-            <button onClick={handlePrint} className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-blue-green hover:scale-110 transition-transform duration-200">Print</button>
+          <div className="flex justify-center mt-4 gap-4">
+            <button onClick={handlePrint} className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-green-600 hover:scale-110 transition-transform duration-200">
+              Print
+            </button>
+            <button onClick={handleExcelExport} className="bg-blue-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-blue-600 hover:scale-110 transition-transform duration-200">
+              Export to Excel
+            </button>
           </div>
           <FDRForm/>
         </div>

@@ -3,6 +3,7 @@ import Header from '../components/Header';
 import axios from 'axios';
 import { AppContext } from '../AppContext/ContextProvider';
 import { getFinancialYearsList, getCurrentFinancialYear } from '../utils/financialYearHelper';
+import * as XLSX from 'xlsx';
 
 const InflowPage = () => {
   const [remarks, setRemarks] = useState([]);
@@ -139,6 +140,34 @@ const InflowPage = () => {
     window.location.reload();
   };
 
+  const handleExcelExport = () => {
+    const excelData = inflowData.map(item => ({
+      'Date': item.date,
+      'Inflow': item.inflow,
+      'Subs for Last FY': item.subsPrevYr,
+      'Subs for Current FY': item.subsCurYr,
+      'Other Receipts': item.otherReceipts,
+      'Total': item.total,
+      'Remarks': remarks[item.srNo - 1] || ''
+    }));
+
+    // Add totals row
+    excelData.push({
+      'Date': 'Totals',
+      'Inflow': '',
+      'Subs for Last FY': totals.subsPrevYr,
+      'Subs for Current FY': totals.subsCurYr,
+      'Other Receipts': totals.otherReceipts,
+      'Total': totals.total,
+      'Remarks': ''
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Inflow');
+    XLSX.writeFile(wb, `Inflow_${selectedFY}_${selectedMonth || 'All'}.xlsx`);
+  };
+
   let heading;
   if (!selectedFY && !selectedMonth) {
     heading = "Inflow Statement";
@@ -235,9 +264,12 @@ const InflowPage = () => {
         </div>
         
         {!loading && !error && inflowData.length > 0 && (
-          <div className="flex justify-center mt-4">
+          <div className="flex justify-center mt-4 gap-4">
             <button onClick={handlePrint} className="bg-green-500 border border-black text-black px-4 py-2 rounded hover:bg-green-600 hover:scale-110 transition-transform duration-200">
               Print
+            </button>
+            <button onClick={handleExcelExport} className="bg-blue-500 border border-black text-black px-4 py-2 rounded hover:bg-blue-600 hover:scale-110 transition-transform duration-200">
+              Export to Excel
             </button>
           </div>
         )}

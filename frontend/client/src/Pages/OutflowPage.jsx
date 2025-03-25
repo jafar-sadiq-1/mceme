@@ -3,6 +3,7 @@ import Header from '../components/Header';
 import axios from 'axios';
 import { AppContext } from '../AppContext/ContextProvider';
 import { getFinancialYearsList, getCurrentFinancialYear } from '../utils/financialYearHelper';
+import * as XLSX from 'xlsx';
 
 const OutflowPage = () => {
   const [remarks, setRemarks] = useState([]);
@@ -80,6 +81,28 @@ const OutflowPage = () => {
     window.print();
     document.body.innerHTML = originalContents; // Restore after printing
     window.location.reload(); // Ensure scripts reattach after print
+  };
+
+  const handleExcelExport = () => {
+    const excelData = outflowData.map(item => ({
+      'Date': item.date,
+      'Outflow': item.outflow,
+      'Total': item.total,
+      'Remarks': remarks[item.srNo - 1] || ''
+    }));
+
+    // Add total row
+    excelData.push({
+      'Date': 'Total',
+      'Outflow': '',
+      'Total': totalAmount,
+      'Remarks': ''
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Outflow');
+    XLSX.writeFile(wb, `Outflow_${selectedFY}_${selectedMonth || 'All'}.xlsx`);
   };
 
   let heading;
@@ -172,9 +195,12 @@ const OutflowPage = () => {
         </div>
         
         {!loading && !error && outflowData.length > 0 && (
-          <div className="flex justify-center mt-4">
+          <div className="flex justify-center mt-4 gap-4">
             <button onClick={handlePrint} className="bg-green-500 border border-black text-black px-4 py-2 rounded hover:bg-green-600 hover:scale-110 transition-transform duration-200">
               Print
+            </button>
+            <button onClick={handleExcelExport} className="bg-blue-500 border border-black text-black px-4 py-2 rounded hover:bg-blue-600 hover:scale-110 transition-transform duration-200">
+              Export to Excel
             </button>
           </div>
         )}

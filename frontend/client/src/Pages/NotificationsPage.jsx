@@ -1,46 +1,70 @@
-import { useContext } from "react";
-import { AppContext } from '../AppContext/ContextProvider';
+import { useState, useEffect } from "react";
 import Header from "../components/Header";
+import axios from 'axios';
 
 const NotificationsPage = () => {
-  const { systemNotifications } = useContext(AppContext);
+  const [maturingFDRs, setMaturingFDRs] = useState([]);
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'high': return 'bg-red-50 border-red-200';
-      case 'medium': return 'bg-yellow-50 border-yellow-200';
-      default: return 'bg-blue-50 border-blue-200';
-    }
+  useEffect(() => {
+    const fetchFDRs = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/fdr');
+        const fdrs = response.data;
+        
+        const oneMonthFromNow = new Date();
+        oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
+        
+        const upcomingMaturities = fdrs.filter(fdr => {
+          const maturityDate = new Date(fdr.maturityDate);
+          return maturityDate <= oneMonthFromNow && maturityDate >= new Date();
+        });
+
+        setMaturingFDRs(upcomingMaturities);
+      } catch (error) {
+        console.error('Error fetching FDRs:', error);
+      }
+    };
+
+    fetchFDRs();
+  }, []);
+
+  const formatCurrency = (amount) => {
+    return amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
   };
 
   return (
     <>
       <Header />
       <div className="min-h-screen bg-gradient-to-r from-teal-100 to-violet-100 p-8">
-        <div className="bg-white shadow-md rounded-lg p-6 mx-auto max-w-2xl">
+        <div className="bg-white shadow-md rounded-lg p-6 mx-auto max-w-4xl">
           <h2 className="text-2xl font-bold mb-6 text-gray-800">Notifications</h2>
-          <div className="space-y-4">
-            {Array.isArray(systemNotifications) && systemNotifications.length > 0 ? (
-              systemNotifications.map((notification) => {
-                const NotificationIcon = notification.icon;
-                return (
-                  <div 
-                    key={notification.id}
-                    className={`${getPriorityColor(notification.priority)} p-4 rounded-lg border flex items-start`}
-                  >
-                    {NotificationIcon && <NotificationIcon className="w-6 h-6 mt-1 mr-4 text-gray-600" />}
-                    <div>
-                      <h3 className="font-semibold text-gray-800">{notification.title}</h3>
-                      <p className="text-gray-600 mt-1">{notification.message}</p>
-                      <span className="text-sm text-gray-500 mt-2 block">{notification.date}</span>
+          
+          {/* FDR Maturity Notifications */}
+          {maturingFDRs.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-xl font-semibold mb-4 text-red-600">Upcoming FDR Maturities</h3>
+              <div className="space-y-4">
+                {maturingFDRs.map((fdr) => (
+                  <div key={fdr.fdrNo} className="bg-red-50 border border-red-200 p-4 rounded-lg">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-bold text-lg">FDR No: {fdr.fdrNo}</h4>
+                        <p className="text-gray-700">Bank: {fdr.bank}</p>
+                        <p className="text-gray-700">Maturity Date: {new Date(fdr.maturityDate).toLocaleDateString("en-GB")}</p>
+                        <p className="text-gray-700">Amount: {formatCurrency(fdr.amount)}</p>
+                        <p className="text-gray-700">Maturity Value: {formatCurrency(fdr.maturityValue)}</p>
+                      </div>
+                      <div className="bg-red-100 px-3 py-1 rounded-full">
+                        <span className="text-red-700">
+                          {Math.ceil((new Date(fdr.maturityDate) - new Date()) / (1000 * 60 * 60 * 24))} days left
+                        </span>
+                      </div>
                     </div>
                   </div>
-                );
-              })
-            ) : (
-              <p className="text-gray-600 text-center">No notifications to display</p>
-            )}
-          </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

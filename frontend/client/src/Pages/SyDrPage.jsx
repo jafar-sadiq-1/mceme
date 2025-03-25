@@ -62,22 +62,51 @@ const SyDrPage = () => {
     document.body.innerHTML = `
       <!DOCTYPE html>
       <html>
+        <head>
+          <title>Print Last FY Dues</title>
+          <style>
+            @media print {
+              body::before {
+                content: "EME Journal";
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) rotate(-30deg);
+                font-size: 80px;
+                font-weight: bold;
+                color: rgba(0, 0, 0, 0.1);
+                z-index: 1000;
+                pointer-events: none;
+                white-space: nowrap;
+              }
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              border-spacing: 0;
+            }
+            th, td {
+              border: 1px solid black;
+              padding: 8px;
+              text-align: center;
+            }
+          </style>
+        </head>
         <body>
           ${printContents}
         </body>
       </html>
     `;
     window.print();
-    document.body.innerHTML = originalContents; // Restore after printing
-    window.location.reload(); // Ensure scripts reattach after print
+    document.body.innerHTML = originalContents;
+    window.location.reload();
   };
 
   const handleExportToExcel = () => {
-    // First row will be the title
+    // Prepare data for Excel
     const excelData = [
       [`List of Last Financial Year Dues on ${currentDate}`],
       [], // Empty row for spacing
-      // Add headers
       ['Sr No', 'Name of the Unit', 'Last FY Amount', 'Remarks']
     ];
 
@@ -92,35 +121,26 @@ const SyDrPage = () => {
     });
 
     // Add total row
-    excelData.push([
-      '',
-      'Total',
-      totalAmount,
-      ''
-    ]);
+    excelData.push(['', 'Total', totalAmount, '']);
 
-    // Create worksheet from the array of arrays
+    // Create worksheet and set styles
     const ws = XLSX.utils.aoa_to_sheet(excelData);
-
-    // Style the title
+    
+    // Add merge cells for title
     ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } } // Merge first row across all columns
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }
     ];
 
-    // Auto-size columns
-    const colWidths = [
+    // Set column widths
+    ws['!cols'] = [
       { wch: 8 },  // Sr No
       { wch: 30 }, // Name of the Unit
       { wch: 15 }, // Last FY Amount
-      { wch: 20 }, // Remarks
+      { wch: 20 }  // Remarks
     ];
-    ws['!cols'] = colWidths;
 
-    // Create workbook and append worksheet
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Last FY Dues');
-
-    // Generate Excel file
     XLSX.writeFile(wb, `Last_FY_Dues_${currentDate.replace(/\s/g, '_')}.xlsx`);
   };
 
@@ -181,16 +201,16 @@ const SyDrPage = () => {
         </div>
         
         {!loading && !error && tableData.length > 0 && (
-          <div className="flex justify-center space-x-4">
+          <div className="flex justify-center space-x-4 mt-4">
             <button 
               onClick={handlePrint} 
-              className="bg-green-500 border border-black text-black px-4 py-2 rounded hover:bg-green-600 hover:scale-110 transition-transform duration-200"
+              className="bg-green-500 border border-black text-white px-4 py-2 rounded hover:bg-green-600 hover:scale-110 transition-transform duration-200"
             >
               Print
             </button>
             <button 
               onClick={handleExportToExcel}
-              className="bg-blue-500 border border-black text-black px-4 py-2 rounded hover:bg-blue-600 hover:scale-110 transition-transform duration-200"
+              className="bg-blue-500 border border-black text-white px-4 py-2 rounded hover:bg-blue-600 hover:scale-110 transition-transform duration-200"
             >
               Export to Excel
             </button>

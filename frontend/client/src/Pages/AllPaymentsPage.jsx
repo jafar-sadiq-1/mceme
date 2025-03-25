@@ -3,6 +3,7 @@ import Header from '../components/Header';
 import axios from 'axios';
 import { AppContext } from '../AppContext/ContextProvider';
 import { getFinancialYearsList, getCurrentFinancialYear } from '../utils/financialYearHelper';
+import * as XLSX from 'xlsx';
 
 const AllPaymentsPage = () => {
   const { setAllPayments } = useContext(AppContext);
@@ -69,6 +70,41 @@ const AllPaymentsPage = () => {
     window.location.reload(); // Ensure scripts reattach after print
   };
 
+  const handleExcelExport = () => {
+    // Prepare the data for Excel
+    const excelData = payments.map(payment => ({
+      'S.No': payment.SNo,
+      'Date': payment.Date,
+      'Month': payment.Month,
+      'PV No': payment.PVNo,
+      'Particulars': payment.Particulars,
+      'Type of Payment': payment.TypeOfPayment,
+      'Amount': payment.Amount.replace('₹', '').trim() // Remove the ₹ symbol
+    }));
+
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+    // Set column widths
+    const columnWidths = [
+      { wch: 5 },  // S.No
+      { wch: 12 }, // Date
+      { wch: 12 }, // Month
+      { wch: 10 }, // PV No
+      { wch: 30 }, // Particulars
+      { wch: 15 }, // Type of Payment
+      { wch: 15 }  // Amount
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, `Payments ${selectedFY}`);
+
+    // Generate and download Excel file
+    XLSX.writeFile(workbook, `Payments_${selectedFY}.xlsx`);
+  };
+
   return (
     <>
       <Header />
@@ -130,9 +166,12 @@ const AllPaymentsPage = () => {
         </div>
 
         {payments.length > 0 && (
-          <div className="flex justify-center mt-6">
+          <div className="flex justify-center mt-6 gap-4">
             <button onClick={handlePrint} className="bg-green-500 border border-black text-black px-4 py-2 rounded hover:bg-green-600 hover:scale-110 transition-transform duration-200">
               Print
+            </button>
+            <button onClick={handleExcelExport} className="bg-blue-500 border border-black text-black px-4 py-2 rounded hover:bg-blue-600 hover:scale-110 transition-transform duration-200">
+              Export to Excel
             </button>
           </div>
         )}

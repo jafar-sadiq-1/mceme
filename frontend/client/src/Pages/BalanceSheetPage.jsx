@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Header from '../components/Header';
 import axios from 'axios';
 import { getFinancialYearsList, getCurrentFinancialYear } from '../utils/financialYearHelper';
+import * as XLSX from 'xlsx';
 
 export default function BalanceSheet() {
   const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
@@ -173,6 +174,33 @@ export default function BalanceSheet() {
     window.location.reload(); // Ensure scripts reattach after print
   };
 
+  const handleExcelExport = () => {
+    const excelData = [];
+    const maxRows = Math.max(assets.length, liabilities.length);
+
+    for (let i = 0; i < maxRows; i++) {
+      excelData.push({
+        'Assets': assets[i]?.name || '',
+        'Amount': assets[i]?.amount || '',
+        'Liabilities': liabilities[i]?.name || '',
+        'Amount.1': liabilities[i]?.amount || ''
+      });
+    }
+
+    // Add totals row
+    excelData.push({
+      'Assets': 'Total',
+      'Amount': totalAssets,
+      'Liabilities': 'Total',
+      'Amount.1': totalLiabilities
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Balance Sheet');
+    XLSX.writeFile(wb, `Balance_Sheet_${selectedFY}_${selectedMonth || 'All'}.xlsx`);
+  };
+
   let heading = "Balance Sheet";
   if (selectedFY && selectedMonth) {
     heading = `Balance Sheet for ${selectedMonth} ${selectedFY}`;
@@ -265,11 +293,14 @@ export default function BalanceSheet() {
           </div>
         </div>
       </div>
-      <div className="flex justify-center mt-6">
-          <button onClick={handlePrint} className="bg-green-500 border border-black text-black px-4 py-2 rounded hover:bg-green-600 hover:scale-110 transition-transform duration-200">
-            Print
-          </button>
-        </div>
+      <div className="flex justify-center mt-6 gap-4">
+        <button onClick={handlePrint} className="bg-green-500 border border-black text-black px-4 py-2 rounded hover:bg-green-600 hover:scale-110 transition-transform duration-200">
+          Print
+        </button>
+        <button onClick={handleExcelExport} className="bg-blue-500 border border-black text-black px-4 py-2 rounded hover:bg-blue-600 hover:scale-110 transition-transform duration-200">
+          Export to Excel
+        </button>
+      </div>
     </div>
     </>
   );

@@ -3,6 +3,7 @@ import axios from 'axios';
 import {AppContext}  from '../AppContext/ContextProvider';
 import UnitForm from '../components/UnitsForm';
 import Header from '../components/Header';
+import * as XLSX from 'xlsx';
 
 const UnitsPage = () => {
   const { units, setUnits } = useContext(AppContext);
@@ -61,6 +62,26 @@ const UnitsPage = () => {
       window.location.reload(); // Reload to restore original content
     };
 
+    const handleExcelExport = () => {
+      const excelData = filteredUnits.map((unit, index) => ({
+        'S.No': index + 1,
+        'Ledger Pg No': unit.ledgerPageNumber,
+        'Name of Unit': unit.nameOfUnit,
+        'Command': unit.command,
+        'Subscription Amount': unit.amount || 0,
+        'Current FY': unit.currentFinancialYear,
+        'Current FY Amount': unit.currentFinancialAmount,
+        'Last FY Amount': unit.lastFinancialYearAmount,
+        'Unpaid Amount': unit.unpaidAmount,
+        'Advance Amount': unit.advanceAmount || 0
+      }));
+  
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Units');
+      XLSX.writeFile(wb, `Units_List_${new Date().toLocaleDateString()}.xlsx`);
+    };
+
   return (
     <>
       <Header />
@@ -113,11 +134,19 @@ const UnitsPage = () => {
             </div>
           </div>
           
-          <div className="mt-4 flex justify-center">
+          <div className="mt-4 flex justify-center gap-4">
             <button 
               onClick={handlePrint} 
               className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-green-600 hover:scale-110 transition-transform duration-200"
-            >Print</button>
+            >
+              Print
+            </button>
+            <button 
+              onClick={handleExcelExport} 
+              className="bg-blue-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-blue-600 hover:scale-110 transition-transform duration-200"
+            >
+              Export to Excel
+            </button>
           </div>
         </div>
       </div>

@@ -6,11 +6,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Lottie from "lottie-react";
 import wavingHandAnimation from "../assets/hand.json"; // Import JSON file
 import logo from '../assets/th.jpg';
+import axios from 'axios';
 
 const Header = () => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [user, setUser] = useState('');
-  const [notificationCount, setNotificationCount] = useState(5);
+  const [notificationCount, setNotificationCount] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const dropdownRef = useRef(null);
@@ -29,6 +30,29 @@ const Header = () => {
         console.error("Invalid token:", error);
       }
     }
+  }, []);
+
+  useEffect(() => {
+    const fetchFDRs = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/fdr');
+        const fdrs = response.data;
+        
+        const oneMonthFromNow = new Date();
+        oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
+        
+        const upcomingMaturities = fdrs.filter(fdr => {
+          const maturityDate = new Date(fdr.maturityDate);
+          return maturityDate <= oneMonthFromNow && maturityDate >= new Date();
+        });
+
+        setNotificationCount(upcomingMaturities.length);
+      } catch (error) {
+        console.error('Error fetching FDRs:', error);
+      }
+    };
+
+    fetchFDRs();
   }, []);
 
   const toggleDropdown = () => {

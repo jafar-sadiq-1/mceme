@@ -4,6 +4,7 @@ import { AppContext } from "../AppContext/ContextProvider";
 import ReceiptForm from "../components/ReceiptForm";
 import axios from 'axios';
 import { getFinancialYearsList, getCurrentFinancialYear } from '../utils/financialYearHelper';
+import * as XLSX from 'xlsx';
 
 const ReceiptPage = () => {
   const { receipts, setReceipts } = useContext(AppContext);
@@ -148,6 +149,40 @@ const ReceiptPage = () => {
     window.location.reload();
   };
 
+  const handleExcelExport = () => {
+    const excelData = receipts.map(receipt => ({
+      'Date': new Date(receipt.date).toLocaleDateString("en-GB"),
+      'RV': receipt.voucherType + receipt.voucherNo,
+      'Particulars': receipt.particulars === "Custom" ? receipt.customParticulars : receipt.particulars,
+      'Cash': receipt.cash || '',
+      'Bank': receipt.bank || '',
+      'FDR': receipt.fdr || '',
+      'Sy Dr': receipt.sydr || '',
+      'Sy Cr': receipt.sycr || '',
+      'Property': receipt.property || '',
+      'EME Journal Fund': receipt.eme_journal_fund || ''
+    }));
+
+    // Add totals row
+    excelData.push({
+      'Date': 'Totals',
+      'RV': '',
+      'Particulars': '',
+      'Cash': totals.cash,
+      'Bank': totals.bank,
+      'FDR': totals.fdr,
+      'Sy Dr': totals.sydr,
+      'Sy Cr': totals.sycr,
+      'Property': totals.property,
+      'EME Journal Fund': totals.eme_journal_fund
+    });
+
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Receipts');
+    XLSX.writeFile(wb, `Receipts_${selectedFY}_${selectedMonth || 'All'}.xlsx`);
+  };
+
   return (
     <>
       <Header />
@@ -263,9 +298,12 @@ const ReceiptPage = () => {
             )}
           </div>
           {receipts.length > 0 && (
-            <div className="flex justify-center mt-4">
+            <div className="flex justify-center mt-4 gap-4">
               <button onClick={handlePrint} className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-blue-green hover:scale-110 transition-transform duration-200">
                 Print
+              </button>
+              <button onClick={handleExcelExport} className="bg-blue-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-blue-600 hover:scale-110 transition-transform duration-200">
+                Export to Excel
               </button>
             </div>
           )}

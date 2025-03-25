@@ -4,6 +4,7 @@ import { AppContext } from "../AppContext/ContextProvider";
 import PaymentForm from "../components/PaymentForm";
 import axios from "axios";
 import { getFinancialYearsList, getCurrentFinancialYear } from "../utils/financialYearHelper";
+import * as XLSX from 'xlsx';
 
 const PaymentsPage = () => {
   const { payments, setPayments } = useContext(AppContext);
@@ -147,6 +148,40 @@ const PaymentsPage = () => {
     window.location.reload();
   };
 
+  const handleExcelExport = () => {
+    const excelData = payments.map(payment => ({
+      'Date': new Date(payment.date).toLocaleDateString("en-GB"),
+      'PV': payment.voucherType + payment.voucherNo,
+      'Particulars': payment.particulars === "Custom" ? payment.customParticulars : payment.particulars,
+      'Cash': payment.cash || '',
+      'Bank': payment.bank || '',
+      'FDR': payment.fdr || '',
+      'Sy Dr': payment.syDr || '',
+      'Sy Cr': payment.syCr || '',
+      'Property': payment.property || '',
+      'EME Journal Fund': payment.emeJournalFund || ''
+    }));
+
+    // Add totals row
+    excelData.push({
+      'Date': 'Totals',
+      'PV': '',
+      'Particulars': '',
+      'Cash': totals.cash,
+      'Bank': totals.bank,
+      'FDR': totals.fdr,
+      'Sy Dr': totals.syDr,
+      'Sy Cr': totals.syCr,
+      'Property': totals.property,
+      'EME Journal Fund': totals.emeJournalFund
+    });
+
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Payments');
+    XLSX.writeFile(wb, `Payments_${selectedFY}_${selectedMonth || 'All'}.xlsx`);
+  };
+
   const year = selectedFY;
   const month = selectedMonth;
 
@@ -257,9 +292,12 @@ const PaymentsPage = () => {
             ) : !loading && <p className="text-gray-700">No payments found for the selected period.</p>}
           </div>
           {payments.length > 0 && (
-            <div className="flex justify-center mt-4">
+            <div className="flex justify-center mt-4 gap-4">
               <button onClick={handlePrint} className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-blue-green hover:scale-110 transition-transform duration-200">
                 Print
+              </button>
+              <button onClick={handleExcelExport} className="bg-blue-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-blue-600 hover:scale-110 transition-transform duration-200">
+                Export to Excel
               </button>
             </div>
           )}
