@@ -22,7 +22,7 @@ const setupDbConnection = async (req, res, next) => {
 
     // Get connection for the specific financial year
     const connection = await getConnection(financialYear);
-    if (!connection) {
+    if (!connection) { 
       throw new Error(`Failed to get connection for ${financialYear}`);
     }
 

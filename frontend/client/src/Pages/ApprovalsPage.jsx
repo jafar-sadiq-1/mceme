@@ -21,7 +21,32 @@ const ApprovalsPage = () => {
   const handleApproval = async (notification) => {
     setLoading(true);
     try {
-      if (notification.notificationType === 'update') {
+      if (notification.notificationType === 'delete') {
+        // Format financial year properly
+        const date = new Date(notification.details.date);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const startYear = month <= 3 ? year - 1 : year;
+        const financialYear = `FY${startYear}-${startYear + 1}`;
+
+        // Call the existing delete route with all required params
+        await axios.delete(`http://localhost:5000/api/receipts`, {
+          params: {
+            year: financialYear,
+            voucherType: notification.details.voucherType,
+            voucherNo: Number(notification.details.voucherNo),
+            particulars: notification.details.particulars || 'Custom'
+          }
+        });
+
+        // Update notification status only after successful deletion
+        await axios.put(`http://localhost:5000/api/notifications/update-status/${notification._id}`, {
+          status: 'approved'
+        });
+
+        alert('Receipt deleted successfully');
+        await fetchNotifications();
+      } else if (notification.notificationType === 'update') {
         // Format financial year properly
         const date = new Date(notification.details.date);
         const year = date.getFullYear();
@@ -64,9 +89,8 @@ const ApprovalsPage = () => {
         }
       }
     } catch (error) {
-      console.error("Full error:", error);
-      console.error("Error response:", error.response?.data);
-      alert("Failed to update receipt: " + (error.response?.data?.message || error.message));
+      console.error("Error in approval:", error.response?.data || error);
+      alert("Failed to process approval: " + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
