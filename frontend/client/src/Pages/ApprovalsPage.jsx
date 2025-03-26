@@ -21,7 +21,8 @@ const ApprovalsPage = () => {
   const handleApproval = async (notification) => {
     setLoading(true);
     try {
-      if (notification.notificationType === 'delete') {
+      // Handle payment updates
+      if (notification.details.type === 'payment') {
         // Format financial year properly
         const date = new Date(notification.details.date);
         const year = date.getFullYear();
@@ -29,63 +30,107 @@ const ApprovalsPage = () => {
         const startYear = month <= 3 ? year - 1 : year;
         const financialYear = `FY${startYear}-${startYear + 1}`;
 
-        // Call the existing delete route with all required params
-        await axios.delete(`http://localhost:5000/api/receipts`, {
-          params: {
-            year: financialYear,
-            voucherType: notification.details.voucherType,
+        if (notification.notificationType === 'delete') {
+          // Delete payment
+          await axios.delete(`http://localhost:5000/api/payments`, {
+            params: {
+              year: financialYear,
+              voucherType: notification.details.voucherType,
+              voucherNo: notification.details.voucherNo
+            }
+          });
+        } else if (notification.notificationType === 'update') {
+          // Update payment
+          const paymentData = {
+            ...notification.details,
+            financialYear,
             voucherNo: Number(notification.details.voucherNo),
-            particulars: notification.details.particulars || 'Custom'
-          }
-        });
+            date: new Date(notification.details.date).toISOString(),
+            cash: Number(notification.details.cash || 0),
+            bank: Number(notification.details.bank || 0),
+            // ...other numeric fields...
+          };
 
-        // Update notification status only after successful deletion
+          await axios.put(
+            `http://localhost:5000/api/payments?year=${financialYear}`,
+            paymentData
+          );
+        }
+
+        // Update notification status
         await axios.put(`http://localhost:5000/api/notifications/update-status/${notification._id}`, {
           status: 'approved'
         });
 
-        alert('Receipt deleted successfully');
+        alert(`Payment ${notification.notificationType}d successfully`);
         await fetchNotifications();
-      } else if (notification.notificationType === 'update') {
-        // Format financial year properly
-        const date = new Date(notification.details.date);
-        const year = date.getFullYear();
-        const month = date.getMonth() + 1;
-        const startYear = month <= 3 ? year - 1 : year;
-        const financialYear = `FY${startYear}-${startYear + 1}`;
+      } else {
+        if (notification.notificationType === 'delete') {
+          // Format financial year properly
+          const date = new Date(notification.details.date);
+          const year = date.getFullYear();
+          const month = date.getMonth() + 1;
+          const startYear = month <= 3 ? year - 1 : year;
+          const financialYear = `FY${startYear}-${startYear + 1}`;
 
-        // Format receipt data
-        const receiptData = {
-          ...notification.details,
-          financialYear,
-          voucherNo: Number(notification.details.voucherNo),
-          date: new Date(notification.details.date).toISOString(),
-          cash: Number(notification.details.cash || 0),
-          bank: Number(notification.details.bank || 0),
-          fdr: Number(notification.details.fdr || 0),
-          sydr: Number(notification.details.sydr || 0),
-          sycr: Number(notification.details.sycr || 0),
-          property: Number(notification.details.property || 0),
-          eme_journal_fund: Number(notification.details.eme_journal_fund || 0),
-          counterVoucherNo: Number(notification.details.counterVoucherNo || 0)
-        };
+          // Call the existing delete route with all required params
+          await axios.delete(`http://localhost:5000/api/receipts`, {
+            params: {
+              year: financialYear,
+              voucherType: notification.details.voucherType,
+              voucherNo: Number(notification.details.voucherNo),
+              particulars: notification.details.particulars || 'Custom'
+            }
+          });
 
-        console.log('Updating receipt with:', { financialYear, receiptData });
-
-        // Update receipt
-        const updateResponse = await axios.put(
-          `http://localhost:5000/api/receipts?year=${financialYear}`,
-          receiptData
-        );
-
-        if (updateResponse.data) {
-          // Update notification status after successful receipt update
+          // Update notification status only after successful deletion
           await axios.put(`http://localhost:5000/api/notifications/update-status/${notification._id}`, {
             status: 'approved'
           });
 
-          alert('Receipt updated successfully');
+          alert('Receipt deleted successfully');
           await fetchNotifications();
+        } else if (notification.notificationType === 'update') {
+          // Format financial year properly
+          const date = new Date(notification.details.date);
+          const year = date.getFullYear();
+          const month = date.getMonth() + 1;
+          const startYear = month <= 3 ? year - 1 : year;
+          const financialYear = `FY${startYear}-${startYear + 1}`;
+
+          // Format receipt data
+          const receiptData = {
+            ...notification.details,
+            financialYear,
+            voucherNo: Number(notification.details.voucherNo),
+            date: new Date(notification.details.date).toISOString(),
+            cash: Number(notification.details.cash || 0),
+            bank: Number(notification.details.bank || 0),
+            fdr: Number(notification.details.fdr || 0),
+            sydr: Number(notification.details.sydr || 0),
+            sycr: Number(notification.details.sycr || 0),
+            property: Number(notification.details.property || 0),
+            eme_journal_fund: Number(notification.details.eme_journal_fund || 0),
+            counterVoucherNo: Number(notification.details.counterVoucherNo || 0)
+          };
+
+          console.log('Updating receipt with:', { financialYear, receiptData });
+
+          // Update receipt
+          const updateResponse = await axios.put(
+            `http://localhost:5000/api/receipts?year=${financialYear}`,
+            receiptData
+          );
+
+          if (updateResponse.data) {
+            // Update notification status after successful receipt update
+            await axios.put(`http://localhost:5000/api/notifications/update-status/${notification._id}`, {
+              status: 'approved'
+            });
+
+            alert('Receipt updated successfully');
+            await fetchNotifications();
+          }
         }
       }
     } catch (error) {

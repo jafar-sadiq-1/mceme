@@ -1,10 +1,11 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import axios from 'axios';
 import { AppContext } from '../AppContext/ContextProvider';
 import { getFinancialYear } from '../utils/financialYearHelper';
 
 const DeletePayment = ({ newPayment, onSuccess }) => {
   const { setPayments } = useContext(AppContext);
+  const [error, setError] = useState("");
 
   const deleteCounterVoucher = async (financialYear, voucherNo) => {
     try {
@@ -24,50 +25,33 @@ const DeletePayment = ({ newPayment, onSuccess }) => {
 
   const handleDeletePayment = async () => {
     try {
-      if (!newPayment || !newPayment.date) {
-        throw new Error('Payment data or date is missing');
-      }
-
-      if (!newPayment.voucherType || !newPayment.voucherNo) {
-        throw new Error(`Required fields missing - Voucher Type: ${newPayment.voucherType}, Voucher No: ${newPayment.voucherNo}`);
-      }
-
-      const financialYear = getFinancialYear(newPayment.date);
-
-      // First delete the payment
-      const response = await axios.delete(
-        `http://localhost:5000/api/payments`, {
-          params: {
-            year: financialYear,
-            voucherType: newPayment.voucherType,
-            voucherNo: newPayment.voucherNo,
-            method: newPayment.method,
-            particulars: newPayment.particulars,
-            paymentType: newPayment.paymentType
-          }
+      // Create notification for delete request
+      const notificationData = {
+        notificationType: 'delete',
+        status: 'pending',
+        details: {
+          ...newPayment,
+          type: 'payment',
+          action: 'delete'
         }
+      };
+
+      // Send to notifications endpoint
+      const notificationResponse = await axios.post(
+        'http://localhost:5000/api/notifications/add',
+        notificationData
       );
 
-      // If payment is deleted successfully, try to delete its counter voucher
-      if (response.data) {
-        try {
-          await deleteCounterVoucher(financialYear, newPayment.voucherNo);
-        } catch (counterError) {
-          console.warn('Counter voucher deletion failed:', counterError);
-          // Don't throw error if counter voucher deletion fails
-          // as it might not exist
-        }
+      if (notificationResponse.data) {
+        alert('Delete request sent for approval');
+        onSuccess();
       }
-
-      console.log('Delete response:', response.data);
-      onSuccess();
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || "Error deleting payment";
-      console.error("Error details:", {
-        message: errorMessage,
-        paymentData: newPayment
-      });
-      alert(errorMessage);
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          "Error creating delete request";
+      console.error("Error details:", error);
+      setError(errorMessage);
     }
   };
 
