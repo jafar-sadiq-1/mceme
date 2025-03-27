@@ -3,8 +3,9 @@ import Header from "../components/Header"; // This line already exists in your c
 import { AppContext } from "../AppContext/ContextProvider";
 import ReceiptForm from "../components/ReceiptForm";
 import axios from 'axios';
-import { getFinancialYearsList, getCurrentFinancialYear } from '../utils/financialYearHelper';
+import { getCurrentFinancialYear } from '../utils/financialYearHelper';
 import * as XLSX from 'xlsx';
+import { useFinancialYears } from '../hooks/useFinancialYears';
 
 const ReceiptPage = () => {
   const { receipts, setReceipts } = useContext(AppContext);
@@ -23,7 +24,7 @@ const ReceiptPage = () => {
   });
   const [totalEmeJournalFund, setTotalEmeJournalFund] = useState(0);
 
-  const financialYears = getFinancialYearsList(10); // Get last 10 financial years
+  const { financialYears, loading: yearsLoading, error: yearsError } = useFinancialYears();
 
   useEffect(() => {
     const fetchReceipts = async () => {
@@ -195,10 +196,17 @@ const ReceiptPage = () => {
               className="border px-4 py-2 rounded-lg"
               value={selectedFY}
               onChange={(e) => setSelectedFY(e.target.value)}
+              disabled={yearsLoading}
             >
-              {financialYears.map((fy) => (
-                <option key={fy} value={fy}>{fy}</option>
-              ))}
+              {yearsLoading ? (
+                <option>Loading years...</option>
+              ) : yearsError ? (
+                <option>Error loading years</option>
+              ) : (
+                financialYears.map((fy) => (
+                  <option key={fy} value={fy}>{fy}</option>
+                ))
+              )}
             </select>
 
             <select

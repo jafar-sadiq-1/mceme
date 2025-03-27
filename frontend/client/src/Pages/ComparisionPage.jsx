@@ -3,6 +3,7 @@ import Header from "../components/Header";
 import axios from 'axios';
 import { getFinancialYearsList, getCurrentFinancialYear } from '../utils/financialYearHelper';
 import * as XLSX from 'xlsx';
+import { useFinancialYears } from '../hooks/useFinancialYears';
 
 const ComparisionPage = () => {
   
@@ -16,8 +17,7 @@ const ComparisionPage = () => {
   const [rightPayments, setRightPayments] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  const financialYears = getFinancialYearsList(10); // Get last 10 financial years
+  const { financialYears, loading: yearsLoading, error: yearsError } = useFinancialYears();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -213,10 +213,17 @@ const ComparisionPage = () => {
               className="border px-4 py-2 rounded-lg"
               value={selectedFY1}
               onChange={(e) => setSelectedFY1(e.target.value)}
+              disabled={yearsLoading}
             >
-              {financialYears.map((fy) => (
-                <option key={fy} value={fy}>{fy}</option>
-              ))}
+              {yearsLoading ? (
+                <option>Loading years...</option>
+              ) : yearsError ? (
+                <option>Error loading years</option>
+              ) : (
+                financialYears.map((fy) => (
+                  <option key={fy} value={fy}>{fy}</option>
+                ))
+              )}
             </select>
             <select
               className="border px-4 py-2 rounded-lg"
@@ -234,10 +241,17 @@ const ComparisionPage = () => {
               className="border px-4 py-2 rounded-lg"
               value={selectedFY2}
               onChange={(e) => setSelectedFY2(e.target.value)}
+              disabled={yearsLoading}
             >
-              {financialYears.map((fy) => (
-                <option key={fy} value={fy}>{fy}</option>
-              ))}
+              {yearsLoading ? (
+                <option>Loading years...</option>
+              ) : yearsError ? (
+                <option>Error loading years</option>
+              ) : (
+                financialYears.map((fy) => (
+                  <option key={fy} value={fy}>{fy}</option>
+                ))
+              )}
             </select>
             <select
               className="border px-4 py-2 rounded-lg"

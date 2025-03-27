@@ -2,17 +2,24 @@ import React, { useState, useEffect, useContext } from 'react';
 import Header from '../components/Header';
 import axios from 'axios';
 import { AppContext } from '../AppContext/ContextProvider';
-import { getFinancialYearsList, getCurrentFinancialYear } from '../utils/financialYearHelper';
+import { getCurrentFinancialYear } from '../utils/financialYearHelper';
 import * as XLSX from 'xlsx';
+import { useFinancialYears } from '../hooks/useFinancialYears';
 
 const AllReceiptsPage = () => {
   const { setReceipts } = useContext(AppContext);
   const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
+  const [selectedMonth, setSelectedMonth] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [receipts, setReceiptsList] = useState([]);
+  const { financialYears, loading: yearsLoading, error: yearsError } = useFinancialYears();
 
-  const financialYears = getFinancialYearsList(10);
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June", 
+    "July", "August", "September", "October", "November", "December"
+  ];
+  const months = monthNames.map((month, index) => ({ number: index + 1, name: month }));
 
   useEffect(() => {
     const fetchReceipts = async () => {
@@ -21,7 +28,8 @@ const AllReceiptsPage = () => {
         const response = await axios.get("http://localhost:5000/api/receipts", {
           params: { 
             year: selectedFY,
-            voucherType: "RV" // Only fetch RV type vouchers
+            month: selectedMonth,
+            voucherType: "RV"
           }
         });
 
@@ -52,7 +60,7 @@ const AllReceiptsPage = () => {
     };
 
     fetchReceipts();
-  }, [selectedFY, setReceipts]);
+  }, [selectedFY, selectedMonth, setReceipts]);
 
   const handlePrint = () => {
     const printContents = document.getElementById("print").innerHTML;
@@ -111,15 +119,33 @@ const AllReceiptsPage = () => {
       <div className="p-6 bg-gradient-to-r from-teal-100 to-violet-100 min-h-screen" 
            style={{ fontFamily: 'Times New Roman, serif' }}>
         <div className="bg-white p-4 rounded-lg shadow-lg">
-          {/* Year Filter */}
-          <div className="mb-6 flex justify-between items-center">
+          {/* Year and Month Filters */}
+          <div className="mb-6 flex space-x-4">
             <select
               className="border px-4 py-2 rounded-lg"
               value={selectedFY}
               onChange={(e) => setSelectedFY(e.target.value)}
+              disabled={yearsLoading}
             >
-              {financialYears.map((fy) => (
-                <option key={fy} value={fy}>{fy}</option>
+              {yearsLoading ? (
+                <option>Loading years...</option>
+              ) : yearsError ? (
+                <option>Error loading years</option>
+              ) : (
+                financialYears.map((fy) => (
+                  <option key={fy} value={fy}>{fy}</option>
+                ))
+              )}
+            </select>
+
+            <select
+              className="border px-4 py-2 rounded-lg"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              <option value="">All Months</option>
+              {months.map((month) => (
+                <option key={month.number} value={month.name}>{month.name}</option>
               ))}
             </select>
           </div>

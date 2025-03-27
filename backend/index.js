@@ -23,7 +23,9 @@ connectDb()
     const ReceiptsRouter = require('./routes/ReceiptsRoute.js');
     const PaymentRouter = require('./routes/PaymentRoute.js');
     const signinRoutes = require('./routes/signin');
-    const approvalRoutes = require('./routes/user_approvals');
+    const userapprovalRoutes = require('./routes/user_approvals');
+    const approvalRoutes = require('./routes/approvalsRoute');
+    const financialYearsRoute = require("./routes/FinancialYearsRoute");
     // Removed VouchersRouter import
 
     // Mount routes with prefixes
@@ -31,9 +33,11 @@ connectDb()
     app.use('/api/fdr', FDRRouter);
     app.use('/api/receipts', ReceiptsRouter);
     app.use('/api/payments', PaymentRouter);
+    app.use("/api/financialYears", financialYearsRoute);
     // Removed VouchersRouter mounting
     app.use(signinRoutes);
-    app.use(approvalRoutes);
+    app.use(userapprovalRoutes);
+    app.use('/api/approvalsRoute', approvalRoutes); // Updated this line to match frontend URL
 
     // Test Route
     app.get('/', (req, res) => res.send('Server is running ✅'));

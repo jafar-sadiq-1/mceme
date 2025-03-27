@@ -5,6 +5,7 @@ import UpdatePayment from './UpdatePayment';
 import DeletePayment from './DeletePayment';
 import axios from 'axios';
 import { getFinancialYear } from '../utils/financialYearHelper';
+import { jwtDecode } from "jwt-decode";  // Add this import
 
 const PaymentForm = () => {
   const { units, setUnits } = useContext(AppContext);  // Add context
@@ -202,6 +203,76 @@ const PaymentForm = () => {
     setError(null);
   };
 
+  const handleRequestUpdate = async () => {
+    try {
+      if (!validateForm()) {
+        return;
+      }
+
+      const token = localStorage.getItem('jwtToken');
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
+
+      const decodedToken = jwtDecode(token);
+      const username = decodedToken.username;
+
+      const approvalRequest = {
+        requestFrom: username,
+        requestOn: 'Payment',
+        requestType: 'update',
+        details: newPayment,
+        status: 'pending'
+      };
+
+      const response = await axios.post('http://localhost:5000/api/approvals', approvalRequest);
+      
+      if (response.status === 201) {
+        alert('Update request sent for approval');
+        resetForm();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError(error.response?.data?.message || 'Error sending update request');
+    }
+  };
+
+  const handleRequestDelete = async () => {
+    try {
+      if (!validateForm()) {
+        return;
+      }
+
+      const token = localStorage.getItem('jwtToken');
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
+
+      const decodedToken = jwtDecode(token);
+      const username = decodedToken.username;
+
+      const approvalRequest = {
+        requestFrom: username,
+        requestOn: 'Payment',
+        requestType: 'delete',
+        details: newPayment,
+        status: 'pending'
+      };
+
+      const response = await axios.post('http://localhost:5000/api/approvals', approvalRequest);
+      
+      if (response.status === 201) {
+        alert('Delete request sent for approval');
+        resetForm();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError(error.response?.data?.message || 'Error sending delete request');
+    }
+  };
+
   return (
     <div>
       <h2 className="text-2xl font-serif text-black mb-4">Manage Payments</h2>
@@ -357,6 +428,20 @@ const PaymentForm = () => {
             onSuccess={resetForm}
             validateForm={validateForm}
           />
+          <button
+            onClick={handleRequestUpdate}
+            className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+            type="button"
+          >
+            Request Update
+          </button>
+          <button
+            onClick={handleRequestDelete}
+            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
+            type="button"
+          >
+            Request Delete
+          </button>
         </div>
         <div className="mt-4">
           {error && (

@@ -3,8 +3,9 @@ import Header from "../components/Header";
 import { AppContext } from "../AppContext/ContextProvider";
 import PaymentForm from "../components/PaymentForm";
 import axios from "axios";
-import { getFinancialYearsList, getCurrentFinancialYear } from "../utils/financialYearHelper";
+import { getCurrentFinancialYear } from "../utils/financialYearHelper";
 import * as XLSX from 'xlsx';
+import { useFinancialYears } from '../hooks/useFinancialYears';
 
 const PaymentsPage = () => {
   const { payments, setPayments } = useContext(AppContext);
@@ -32,7 +33,7 @@ const PaymentsPage = () => {
     property: 0
   });
 
-  const financialYears = getFinancialYearsList(10);
+  const { financialYears, loading: yearsLoading, error: yearsError } = useFinancialYears();
   const abortControllerRef = useRef(null);
 
   const monthNames = [
@@ -205,10 +206,17 @@ const PaymentsPage = () => {
               className="border px-4 py-2 rounded-lg"
               value={selectedFY}
               onChange={(e) => setSelectedFY(e.target.value)}
+              disabled={yearsLoading}
             >
-              {financialYears.map((fy) => (
-                <option key={fy} value={fy}>{fy}</option>
-              ))}
+              {yearsLoading ? (
+                <option>Loading years...</option>
+              ) : yearsError ? (
+                <option>Error loading years</option>
+              ) : (
+                financialYears.map((fy) => (
+                  <option key={fy} value={fy}>{fy}</option>
+                ))
+              )}
             </select>
 
             <select

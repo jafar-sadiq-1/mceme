@@ -2,8 +2,9 @@ import React, { useState, useEffect, useContext } from 'react';
 import Header from '../components/Header';
 import axios from 'axios';
 import { AppContext } from '../AppContext/ContextProvider';
-import { getFinancialYearsList, getCurrentFinancialYear } from '../utils/financialYearHelper';
+import { getCurrentFinancialYear } from '../utils/financialYearHelper';
 import * as XLSX from 'xlsx';
+import { useFinancialYears } from '../hooks/useFinancialYears';
 
 const InflowPage = () => {
   const [remarks, setRemarks] = useState([]);
@@ -15,7 +16,7 @@ const InflowPage = () => {
   const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
   const [selectedMonth, setSelectedMonth] = useState('');
   
-  const financialYears = getFinancialYearsList(10);
+  const { financialYears, loading: yearsLoading, error: yearsError } = useFinancialYears();
   const monthNames = [
     "January", "February", "March", "April", "May", "June", 
     "July", "August", "September", "October", "November", "December"
@@ -189,10 +190,17 @@ const InflowPage = () => {
                 className="border px-4 py-2 rounded-lg"
                 value={selectedFY}
                 onChange={(e) => setSelectedFY(e.target.value)}
+                disabled={yearsLoading}
               >
-                {financialYears.map((fy) => (
-                  <option key={fy} value={fy}>{fy}</option>
-                ))}
+                {yearsLoading ? (
+                  <option>Loading years...</option>
+                ) : yearsError ? (
+                  <option>Error loading years</option>
+                ) : (
+                  financialYears.map((fy) => (
+                    <option key={fy} value={fy}>{fy}</option>
+                  ))
+                )}
               </select>
 
               <select

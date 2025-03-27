@@ -19,6 +19,8 @@ import AllPaymentsPage from './Pages/AllPaymentsPage';
 import AllReceiptsPage from './Pages/AllReceiptsPage';
 import ProtectedRoute from './Pages/ProtectedRoute';
 import NotificationsPage from './Pages/notificationsPage';
+import Chart from './components/Chart';
+import ApprovalsPage from './Pages/ApprovalsPage';
 
 function App() {
   TokenExpiry();
@@ -42,7 +44,9 @@ function App() {
           <Route path='/units' element={<ProtectedRoute><UnitsPage /></ProtectedRoute>} />
           <Route path='/allpayments' element={<ProtectedRoute><AllPaymentsPage /></ProtectedRoute>} />
           <Route path='/allreceipts' element={<ProtectedRoute><AllReceiptsPage /></ProtectedRoute>} />
+          <Route path='/approvals' element={<ProtectedRoute><ApprovalsPage /></ProtectedRoute>} />
           <Route path='/notifications' element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+          <Route path="/chart" element={<ProtectedRoute><Chart /></ProtectedRoute>} />
         </Routes>
       </div>
     </Router>

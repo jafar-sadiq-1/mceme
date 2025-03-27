@@ -5,6 +5,7 @@ import DeleteReceipt from './DeleteReceipt';
 import { AppContext } from '../AppContext/ContextProvider';
 import axios from 'axios';
 import { getFinancialYear } from '../utils/financialYearHelper';
+import { jwtDecode } from "jwt-decode";  // Change this line
 
 const ReceiptForm = () => {
   const { units, setUnits } = useContext(AppContext);  // Add setUnits from context
@@ -204,7 +205,76 @@ const ReceiptForm = () => {
     setError(null);
   };
 
+  const handleRequestUpdate = async () => {
+    try {
+      if (!validateForm()) {
+        return;
+      }
 
+      const token = localStorage.getItem('jwtToken'); // Changed from 'token' to 'jwtToken'
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
+
+      // Use jwtDecode instead of manual decoding
+      const decodedToken = jwtDecode(token);
+      const username = decodedToken.username;
+
+      const approvalRequest = {
+        requestFrom: username,
+        requestOn: 'Receipt',
+        requestType: 'update',
+        details: newReceipt,
+        status: 'pending'  // Added status explicitly
+      };
+
+      const response = await axios.post('http://localhost:5000/api/approvalsRoute', approvalRequest);
+      
+      if (response.status === 201) {
+        alert('Update request sent for approval');
+        resetForm();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError(error.response?.data?.message || 'Error sending update request');
+    }
+  };
+
+  const handleRequestDelete = async () => {
+    try {
+      if (!validateForm()) {
+        return;
+      }
+
+      const token = localStorage.getItem('jwtToken');
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
+
+      const decodedToken = jwtDecode(token);
+      const username = decodedToken.username;
+
+      const approvalRequest = {
+        requestFrom: username,
+        requestOn: 'Receipt',
+        requestType: 'delete',
+        details: newReceipt,
+        status: 'pending'
+      };
+
+      const response = await axios.post('http://localhost:5000/api/approvalsRoute', approvalRequest);
+      
+      if (response.status === 201) {
+        alert('Delete request sent for approval');
+        resetForm();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError(error.response?.data?.message || 'Error sending delete request');
+    }
+  };
 
   return (
     <div>
@@ -362,6 +432,20 @@ const ReceiptForm = () => {
             }}
             validateForm={validateForm}
           />
+          <button
+            onClick={handleRequestUpdate}
+            className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+            type="button"
+          >
+            Request Update
+          </button>
+          <button
+            onClick={handleRequestDelete}
+            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
+            type="button"
+          >
+            Request Delete
+          </button>
         </div>
         <div className="mt-4">
           {error && (

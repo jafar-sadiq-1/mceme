@@ -2,7 +2,8 @@ import React,{useState} from "react";
 import AddFDR from "./AddFDR";
 import UpdateFDR from "./UpdateFDR";
 import DeleteFDR from "./DeleteFDR";
-
+import axios from 'axios';
+import { jwtDecode } from "jwt-decode";
 
 function FDRForm() {
   const [newFdr, setNewFdr] = useState({
@@ -18,12 +19,123 @@ function FDRForm() {
     remarks: "",
   });
 
+  const [error, setError] = useState(null);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewFdr({
       ...newFdr,
       [name]: value,
     });
+  };
+
+  const validateForm = () => {
+    if (!newFdr.fdrNo) {
+      setError("FDR Number is required");
+      return false;
+    }
+    if (!newFdr.dateOfDeposit) {
+      setError("Date of Deposit is required");
+      return false;
+    }
+    if (!newFdr.amount) {
+      setError("Amount is required");
+      return false;
+    }
+    setError(null);
+    return true;
+  };
+
+  const handleRequestUpdate = async () => {
+    try {
+      if (!validateForm()) {
+        return;
+      }
+
+      const token = localStorage.getItem('jwtToken');
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
+
+      const decodedToken = jwtDecode(token);
+      const username = decodedToken.username;
+
+      const approvalRequest = {
+        requestFrom: username,
+        requestOn: 'FDR',
+        requestType: 'update',
+        details: newFdr,
+        status: 'pending'
+      };
+
+      const response = await axios.post('http://localhost:5000/api/approvals', approvalRequest);
+      
+      if (response.status === 201) {
+        alert('Update request sent for approval');
+        setNewFdr({
+          fdrNo: "",
+          dateOfDeposit: "",
+          amount: "",
+          maturityValue: "",
+          maturityDate: "",
+          duration: "",
+          intRate: "",
+          interestAmount: "",
+          bank: "",
+          remarks: "",
+        });
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError(error.response?.data?.message || 'Error sending update request');
+    }
+  };
+
+  const handleRequestDelete = async () => {
+    try {
+      if (!validateForm()) {
+        return;
+      }
+
+      const token = localStorage.getItem('jwtToken');
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
+
+      const decodedToken = jwtDecode(token);
+      const username = decodedToken.username;
+
+      const approvalRequest = {
+        requestFrom: username,
+        requestOn: 'FDR',
+        requestType: 'delete',
+        details: newFdr,
+        status: 'pending'
+      };
+
+      const response = await axios.post('http://localhost:5000/api/approvals', approvalRequest);
+      
+      if (response.status === 201) {
+        alert('Delete request sent for approval');
+        setNewFdr({
+          fdrNo: "",
+          dateOfDeposit: "",
+          amount: "",
+          maturityValue: "",
+          maturityDate: "",
+          duration: "",
+          intRate: "",
+          interestAmount: "",
+          bank: "",
+          remarks: "",
+        });
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError(error.response?.data?.message || 'Error sending delete request');
+    }
   };
 
   return (
@@ -61,7 +173,26 @@ function FDRForm() {
           <AddFDR newFdr={newFdr}/>
           <UpdateFDR newFdr={newFdr}/>
           <DeleteFDR newFdr={newFdr}/>
+          <button
+            onClick={handleRequestUpdate}
+            type="button"
+            className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+          >
+            Request Update
+          </button>
+          <button
+            onClick={handleRequestDelete}
+            type="button"
+            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
+          >
+            Request Delete
+          </button>
         </div>
+        {error && (
+          <div className="text-red-500 text-sm mt-2">
+            {error}
+          </div>
+        )}
       </form>
     </>
   );

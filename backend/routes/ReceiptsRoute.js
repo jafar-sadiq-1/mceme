@@ -2,7 +2,18 @@ const express = require("express");
 const router = express.Router();
 const receiptSchema = require("../models/Receipts");
 const Unit = require("../models/Units");  // Add this import
+const FinancialYear = require("../models/FinancialYears"); // Add this import
 const { getConnection } = require("../config/dbManager");
+
+// Add this function near the top of the file, after the imports
+
+function getFinancialYear(dateString) {
+  const date = new Date(dateString);
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+  const startYear = month <= 3 ? year - 1 : year;
+  return `FY${startYear}-${startYear + 1}`;
+}
 
 // Middleware to setup database connection based on financial year
 const setupDbConnection = async (req, res, next) => {
@@ -40,8 +51,15 @@ router.use(setupDbConnection);
 
 // POST route for adding new receipt
 router.post("/", async (req, res) => {
-  console.log("Received request body:", req.body);  // Add this line for debugging
+  console.log("Received request body:", req.body);
   try {
+    // Check if financial year exists and create if it doesn't
+    const financialYear = req.body.financialYear || getFinancialYear(req.body.date);
+    const existingFY = await FinancialYear.findOne({ financialYear });
+    if (!existingFY) {
+      await FinancialYear.create({ financialYear });
+    }
+
     const {
       date,
       voucherType,
@@ -58,8 +76,7 @@ router.post("/", async (req, res) => {
       sydr,
       sycr,
       property,
-      eme_journal_fund,
-      financialYear
+      eme_journal_fund
     } = req.body;
 
     // Validate required fields
@@ -89,13 +106,13 @@ router.post("/", async (req, res) => {
       financialYear
     });
 
-    console.log("Attempting to save receipt:", newReceipt); // Add this line for debugging
+    console.log("Attempting to save receipt:", newReceipt);
     const savedReceipt = await newReceipt.save();
-    console.log("Receipt saved successfully:", savedReceipt); // Add this line for debugging
+    console.log("Receipt saved successfully:", savedReceipt);
     
     res.status(201).json({ message: "Receipt created successfully", receipt: savedReceipt });
   } catch (error) {
-    console.error("Detailed error:", error); // Add this line for debugging
+    console.error("Detailed error:", error);
     res.status(500).json({ 
       message: "Error creating receipt", 
       error: error.message,

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const paymentSchema = require("../models/Payments");
+const FinancialYear = require("../models/FinancialYears"); // Add this import
 const { getConnection } = require("../config/dbManager");
 const { getFinancialYear } = require("../utils/financialYearHelper"); // Fixed import path
 
@@ -103,6 +104,13 @@ router.get("/lastVoucherNo", async (req, res) => {
 // POST route - Fix the undefined Payment reference
 router.post("/", async (req, res) => {
   try {
+    // Check if financial year exists and create if it doesn't
+    const financialYear = req.body.financialYear || getFinancialYear(req.body.date);
+    const existingFY = await FinancialYear.findOne({ financialYear });
+    if (!existingFY) {
+      await FinancialYear.create({ financialYear });
+    }
+
     console.log('Received payment data:', req.body);
     
     // Ensure required fields
@@ -197,7 +205,7 @@ router.put("/", async (req, res) => {
 
     res.json({ message: "Payment updated successfully", payment });
   } catch (error) {
-    res.status(500).json({ message: "Error updating payment", error: error.message });
+    res.status500.json({ message: "Error updating payment", error: error.message });
   }
 });
 
