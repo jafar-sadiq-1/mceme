@@ -3,9 +3,37 @@ import axios from 'axios';
 import { AppContext } from '../AppContext/ContextProvider';
 import { getFinancialYear } from '../utils/financialYearHelper';
 
-const RequestUpdatePayment = ({ newPayment, createCounterVoucher, onSuccess, validateForm }) => {
+const RequestUpdatePayment = ({ newPayment, approval, setApprovalData }) => {
   const { setPayments } = useContext(AppContext);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleUpdateApproval = async () => {
+    try {
+      if (!approval._id) {
+        throw new Error('Approval ID is missing');
+      }
+
+      const response = await axios.put(
+        `http://localhost:5000/api/approvalsRoute/update-status/${approval._id}`,
+        { status: 'approved' }
+      );
+
+      if (response.data && response.data.approval) {
+        const updatedApprovalData = response.data.approval;
+        setApprovalData(prevData => 
+          prevData.map(item => 
+            item._id === approval._id ? updatedApprovalData : item
+          )
+        );
+      } else {
+        throw new Error('Failed to update approval status');
+      }
+    } catch (error) {
+      console.error("Error updating approval status:", error.response?.data || error.message);
+      throw error;
+    }
+  };
 
   const createCounterVoucherData = (paymentData) => {
     // Calculate total amount from all payment methods
@@ -49,8 +77,8 @@ const RequestUpdatePayment = ({ newPayment, createCounterVoucher, onSuccess, val
   };
 
   const handleUpdatePayment = async () => {
+    setLoading(true);
     try {
-      if (!validateForm()) return;
       const financialYear = getFinancialYear(newPayment.date);
 
       // If not custom particulars, handle unit updates
@@ -137,8 +165,8 @@ const RequestUpdatePayment = ({ newPayment, createCounterVoucher, onSuccess, val
         updatedPayment
       );
 
-      // Update counter voucher in receipts if exists
-      if (createCounterVoucher) {
+      // Update counter voucher if payment type requires it
+      if (["Depreciation Amount", "Wavier", "EME Journal Fund"].includes(newPayment.paymentType)) {
         try {
           const counterVoucherData = createCounterVoucherData(updatedPayment);
           const finalCounterVoucherData = {
@@ -175,13 +203,16 @@ const RequestUpdatePayment = ({ newPayment, createCounterVoucher, onSuccess, val
         }
       }
 
-      console.log('Update response:', response.data);
-      onSuccess();
+      // After successful payment update, update the approval status
+      await handleUpdateApproval();
+      alert('Payment updated and approval status updated successfully');
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || "Error updating payment";
       setError(errorMessage);
       console.error("Error details:", error);
       alert(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -190,9 +221,20 @@ const RequestUpdatePayment = ({ newPayment, createCounterVoucher, onSuccess, val
       <button
         type="button"
         onClick={handleUpdatePayment}
-        className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-green-600 hover:scale-110 transition-transform duration-200"
+        disabled={loading || approval.status === 'approved'}
+        className={`px-4 py-2 text-white rounded transition-colors ${
+          loading 
+            ? 'bg-yellow-400 cursor-wait'
+            : approval.status === 'approved'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-green-500 hover:bg-green-600 hover:scale-110'
+        }`}
       >
-        Update Payment
+        {loading 
+          ? 'Updating...' 
+          : approval.status === 'approved' 
+          ? 'Update Approved' 
+          : 'Approve Update'}
       </button>
       {error && (
         <div className="text-red-500 text-sm mt-2">

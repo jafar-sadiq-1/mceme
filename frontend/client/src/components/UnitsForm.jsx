@@ -70,7 +70,7 @@ const UnitsForm = () => {
         status: 'pending'
       };
 
-      const response = await axios.post('http://localhost:5000/api/approvals', approvalRequest);
+      const response = await axios.post('http://localhost:5000/api/approvalsRoute', approvalRequest);
       
       if (response.status === 201) {
         alert('Update request sent for approval');
@@ -116,7 +116,7 @@ const UnitsForm = () => {
         status: 'pending'
       };
 
-      const response = await axios.post('http://localhost:5000/api/approvals', approvalRequest);
+      const response = await axios.post('http://localhost:5000/api/approvalsRoute', approvalRequest);
       
       if (response.status === 201) {
         alert('Delete request sent for approval');
@@ -258,14 +258,14 @@ const UnitsForm = () => {
         <button
           onClick={handleRequestUpdate}
           type="button"
-          className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+         className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-green-600 hover:scale-110 transition-transform duration-200"
         >
           Request Update
         </button>
         <button
           onClick={handleRequestDelete}
           type="button"
-          className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
+          className="bg-red-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:scale-110 transition-transform duration-200"
         >
           Request Delete
         </button>
