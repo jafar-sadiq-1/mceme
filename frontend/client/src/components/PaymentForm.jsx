@@ -5,7 +5,7 @@ import UpdatePayment from './UpdatePayment';
 import DeletePayment from './DeletePayment';
 import axios from 'axios';
 import { getFinancialYear } from '../utils/financialYearHelper';
-import { jwtDecode } from "jwt-decode";  // Add this import
+import {jwtDecode} from "jwt-decode";  // Change this line
 
 const PaymentForm = () => {
   const { units, setUnits } = useContext(AppContext);  // Add context
@@ -53,6 +53,19 @@ const PaymentForm = () => {
   const [isCustomSelected, setIsCustomSelected] = useState(false);
   const [error, setError] = useState(null);
   const [createCounterVoucher, setCreateCounterVoucher] = useState(true); // Add this state
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token); // Change this line
+        setUser(decoded);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
+  }, []);
 
   const validateForm = () => {
     if (!newPayment.date) {
@@ -417,31 +430,38 @@ const PaymentForm = () => {
             onSuccess={resetForm} 
             validateForm={validateForm} 
           />
-          <UpdatePayment 
-            newPayment={newPayment}
-            createCounterVoucher={createCounterVoucher}
-            onSuccess={resetForm} 
-            validateForm={validateForm} 
-          />
-          <DeletePayment 
-            newPayment={newPayment}
-            onSuccess={resetForm}
-            validateForm={validateForm}
-          />
-          <button
-            onClick={handleRequestUpdate}
-            className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-green-600 hover:scale-110 transition-transform duration-200"
-            type="button"
-          >
-            Request Update
-          </button>
-          <button
-            onClick={handleRequestDelete}
-            className="bg-red-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:scale-110 transition-transform duration-200"
-            type="button"
-          >
-            Request Delete
-          </button>
+          {user?.toggler !== "Clerk" && (
+            <UpdatePayment 
+              newPayment={newPayment}
+              onSuccess={resetForm} 
+              validateForm={validateForm} 
+            />
+          )}
+          {user?.toggler !== "Clerk" && (
+            <DeletePayment 
+              newPayment={newPayment}
+              onSuccess={resetForm}
+              validateForm={validateForm}
+            />
+          )}
+          {["Clerk"].includes(user?.toggler) && (
+            <button
+              onClick={handleRequestUpdate}
+              className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-green-600 hover:scale-110 transition-transform duration-200"
+              type="button"
+            >
+              Request Update
+            </button>
+          )}
+          {["Clerk"].includes(user?.toggler) && (
+            <button
+              onClick={handleRequestDelete}
+              className="bg-red-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:scale-110 transition-transform duration-200"
+              type="button"
+            >
+              Request Delete
+            </button>
+          )}
         </div>
         <div className="mt-4">
           {error && (

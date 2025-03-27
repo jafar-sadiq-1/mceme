@@ -44,7 +44,7 @@ router.post('/login', async (req, res) => {
     if (user.password !== password) return res.status(400).json({ message: 'Invalid password' });
 
     // Create payload for JWT token
-    const payload = { username: user.username, designation: user.designation };
+    const payload = { username: user.username, designation: user.designation , toggler : user.toggler};
 
     // Generate JWT token
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });

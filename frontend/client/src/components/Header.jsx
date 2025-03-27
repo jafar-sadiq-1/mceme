@@ -10,7 +10,7 @@ import axios from 'axios';
 
 const Header = () => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
-  const [user, setUser] = useState('');
+  const [user, setUser] = useState(null);
   const [notificationCount, setNotificationCount] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,12 +25,16 @@ const Header = () => {
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        setUser(decoded.username || 'User');
+        setUser(decoded);
       } catch (error) {
-        console.error("Invalid token:", error);
+        console.error('Error decoding token:', error);
+        localStorage.removeItem('jwtToken'); // Clear invalid token
+        navigate('/'); // Redirect to login
       }
+    } else {
+      navigate('/'); // Redirect to login if no token
     }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     const fetchFDRs = async () => {
@@ -74,7 +78,7 @@ const Header = () => {
           
           {/* Greeting Text */}
           <span className="text-white font-bold text-2xl">
-            {user ? `Hi ${user} !` : "Not Logged In"}
+            {user?.username ? `Hi ${user.username}!` : "Welcome"}
           </span>
 
           {/* Lottie Waving Hand Animation */}
@@ -123,8 +127,12 @@ const Header = () => {
               <div className="absolute right-0 w-48 bg-white text-teal-700 rounded-lg shadow-md" onMouseEnter={() => setDropdownVisible(true)}>
                 <ul>
                   <li className="px-4 py-2 hover:bg-gray-200 cursor-pointer" onClick={() => handleNavigation('/change-password')}> Change Password </li>
-                  <li className="px-4 py-2 hover:bg-gray-200 cursor-pointer" onClick={() => handleNavigation('/users-requests')}> Users And Requests </li>
-                  <li className="px-4 py-2 hover:bg-gray-200 cursor-pointer" onClick={() => handleNavigation('/approvals')}> Approvals </li>
+                  {user && (user.toggler === 'E' || user.toggler === 'AE') && (
+                    <>
+                      <li className="px-4 py-2 hover:bg-gray-200 cursor-pointer" onClick={() => handleNavigation('/users-requests')}> Users And Requests </li>
+                      <li className="px-4 py-2 hover:bg-gray-200 cursor-pointer" onClick={() => handleNavigation('/approvals')}> Approvals </li>
+                    </>
+                  )}
                   <li className="px-4 py-2 hover:bg-gray-200 cursor-pointer" onClick={() => { localStorage.clear(); window.location.href = '/'; }}> Logout </li>
                 </ul>
               </div>

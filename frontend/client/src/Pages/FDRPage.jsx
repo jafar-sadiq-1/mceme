@@ -4,10 +4,24 @@ import FDRForm from "../components/FDRForm";
 import { AppContext } from "../AppContext/ContextProvider";
 import Header from '../components/Header';
 import * as XLSX from 'xlsx';
+import {jwtDecode} from 'jwt-decode';
 
 export default function FDRPage() {
   const { fdrs, setFdrs } = useContext(AppContext);
   const [search, setSearch] = useState('');
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUser(decoded);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchFdrs = async () => {
@@ -148,7 +162,7 @@ export default function FDRPage() {
               Export to Excel
             </button>
           </div>
-          <FDRForm/>
+          {user && user.toggler !== "Viewer" && <FDRForm/>}
         </div>
       </div>
     </>

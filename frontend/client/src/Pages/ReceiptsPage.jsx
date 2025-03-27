@@ -6,9 +6,11 @@ import axios from 'axios';
 import { getCurrentFinancialYear } from '../utils/financialYearHelper';
 import * as XLSX from 'xlsx';
 import { useFinancialYears } from '../hooks/useFinancialYears';
+import { jwtDecode } from "jwt-decode";
 
 const ReceiptPage = () => {
   const { receipts, setReceipts } = useContext(AppContext);
+  const [user, setUser] = useState(null);
   const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
   const [selectedMonth, setSelectedMonth] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,6 +27,19 @@ const ReceiptPage = () => {
   const [totalEmeJournalFund, setTotalEmeJournalFund] = useState(0);
 
   const { financialYears, loading: yearsLoading, error: yearsError } = useFinancialYears();
+
+  useEffect(() => {
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUser(decoded);
+        console.log("User:", decoded);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchReceipts = async () => {
@@ -315,7 +330,7 @@ const ReceiptPage = () => {
               </button>
             </div>
           )}
-          <ReceiptForm />
+          {user && user.toggler !== "Viewer" && <ReceiptForm />}
         </div>
       </div>
     </>

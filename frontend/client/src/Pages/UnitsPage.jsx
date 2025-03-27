@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
+import {jwtDecode} from 'jwt-decode';
 import {AppContext}  from '../AppContext/ContextProvider';
 import UnitForm from '../components/UnitsForm';
 import Header from '../components/Header';
@@ -8,7 +9,21 @@ import * as XLSX from 'xlsx';
 const UnitsPage = () => {
   const { units, setUnits } = useContext(AppContext);
   const [search, setSearch] = useState('');
+  const [user, setUser] = useState(null);
   const printRef=useRef();
+
+  useEffect(() => {
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUser(decoded);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const fetchUnits = async () => {
       try {
@@ -88,7 +103,7 @@ const UnitsPage = () => {
       <div className="w-full h-full p-6 bg-gradient-to-r from-teal-100 to-violet-100 font-serif">
         <h1 className="text-3xl mb-4 text-purple-700">Units Page</h1>
         <div className="bg-white shadow-md rounded-lg p-6" style={{ fontFamily: 'Times New Roman, serif' }}>
-          <UnitForm/>
+          {user && user.toggler !== "Viewer" && <UnitForm/>}
           <div className="flex justify-between items-center mb-4">
             <input
               type="text"

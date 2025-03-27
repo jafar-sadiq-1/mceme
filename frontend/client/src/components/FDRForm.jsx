@@ -1,9 +1,9 @@
-import React,{useState} from "react";
+import React,{useState, useEffect} from "react";
 import AddFDR from "./AddFDR";
 import UpdateFDR from "./UpdateFDR";
 import DeleteFDR from "./DeleteFDR";
 import axios from 'axios';
-import { jwtDecode } from "jwt-decode";
+import {jwtDecode} from "jwt-decode";
 
 function FDRForm() {
   const [newFdr, setNewFdr] = useState({
@@ -20,6 +20,19 @@ function FDRForm() {
   });
 
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUser(decoded);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -171,22 +184,26 @@ function FDRForm() {
 
         <div className="flex space-x-4">
           <AddFDR newFdr={newFdr}/>
-          <UpdateFDR newFdr={newFdr}/>
-          <DeleteFDR newFdr={newFdr}/>
-          <button
-            onClick={handleRequestUpdate}
-            type="button"
-            className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-green-600 hover:scale-110 transition-transform duration-200"
-          >
-            Request Update
-          </button>
-          <button
-            onClick={handleRequestDelete}
-            type="button"
-            className="bg-red-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:scale-110 transition-transform duration-200"
-          >
-            Request Delete
-          </button>
+          {user?.toggler !== "Clerk" && <UpdateFDR newFdr={newFdr}/>}
+          {user?.toggler !== "Clerk" && <DeleteFDR newFdr={newFdr}/>}
+          {["Clerk"].includes(user?.toggler) && (
+            <button
+              onClick={handleRequestUpdate}
+              type="button"
+              className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-green-600 hover:scale-110 transition-transform duration-200"
+            >
+              Request Update
+            </button>
+          )}
+          {["Clerk"].includes(user?.toggler) && (
+            <button
+              onClick={handleRequestDelete}
+              type="button"
+              className="bg-red-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:scale-110 transition-transform duration-200"
+            >
+              Request Delete
+            </button>
+          )}
         </div>
         {error && (
           <div className="text-red-500 text-sm mt-2">

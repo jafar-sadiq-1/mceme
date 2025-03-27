@@ -9,6 +9,19 @@ import { jwtDecode } from "jwt-decode";  // Change this line
 
 const ReceiptForm = () => {
   const { units, setUnits } = useContext(AppContext);  // Add setUnits from context
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUser(decoded);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
+  }, []);
 
   // Add useEffect to fetch units
   useEffect(() => {
@@ -418,34 +431,42 @@ const ReceiptForm = () => {
             }}
             validateForm={validateForm}
           />
-          <UpdateReceipt 
-            newReceipt={newReceipt}
-            onSuccess={() => {
-              resetForm();
-            }}
-            validateForm={validateForm}
-          />
-          <DeleteReceipt 
-            newReceipt={newReceipt}
-            onSuccess={() => {
-              resetForm();
-            }}
-            validateForm={validateForm}
-          />
-          <button
-            onClick={handleRequestUpdate}
-            className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-green-600 hover:scale-110 transition-transform duration-200"
-            type="button"
-          >
-            Request Update
-          </button>
-          <button
-            onClick={handleRequestDelete}
-            className="bg-red-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:scale-110 transition-transform duration-200"
-            type="button"
-          >
-            Request Delete
-          </button>
+          {user?.toggler !== "Clerk" && (
+            <UpdateReceipt 
+              newReceipt={newReceipt}
+              onSuccess={() => {
+                resetForm();
+              }}
+              validateForm={validateForm}
+            />
+          )}
+          {user?.toggler !== "Clerk" && (
+            <DeleteReceipt 
+              newReceipt={newReceipt}
+              onSuccess={() => {
+                resetForm();
+              }}
+              validateForm={validateForm}
+            />
+          )}
+          {["Clerk"].includes(user?.toggler) && (
+            <button
+              onClick={handleRequestUpdate}
+              className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-green-600 hover:scale-110 transition-transform duration-200"
+              type="button"
+            >
+              Request Update
+            </button>
+          )}
+          {["Clerk"].includes(user?.toggler) && (
+            <button
+              onClick={handleRequestDelete}
+              className="bg-red-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:scale-110 transition-transform duration-200"
+              type="button"
+            >
+              Request Delete
+            </button>
+          )}
         </div>
         <div className="mt-4">
           {error && (

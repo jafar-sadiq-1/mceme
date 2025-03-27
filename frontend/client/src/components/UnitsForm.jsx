@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AddUnitButton from './AddUnit';
 import UpdateUnitButton from './UpdateUnit';
 import DeleteUnitButton from './DeleteUnit';
@@ -21,6 +21,19 @@ const UnitsForm = () => {
   });
 
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUser(decoded);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -251,24 +264,28 @@ const UnitsForm = () => {
         </div>
       </form>
 
-      <div className="flex justify-center mt-4 space-x-4">
+      <div className="flex space-x-4 mt-4">
         <AddUnitButton newUnit={newUnit} />
-        <UpdateUnitButton newUnit={newUnit} />
-        <DeleteUnitButton newUnit={newUnit} />
-        <button
-          onClick={handleRequestUpdate}
-          type="button"
-         className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-green-600 hover:scale-110 transition-transform duration-200"
-        >
-          Request Update
-        </button>
-        <button
-          onClick={handleRequestDelete}
-          type="button"
-          className="bg-red-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:scale-110 transition-transform duration-200"
-        >
-          Request Delete
-        </button>
+        {user?.toggler !== "Clerk" && <UpdateUnitButton newUnit={newUnit} />}
+        {user?.toggler !== "Clerk" && <DeleteUnitButton newUnit={newUnit} />}
+        {["Clerk"].includes(user?.toggler) && (
+          <button
+            onClick={handleRequestUpdate}
+            className="bg-green-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-green-600 hover:scale-110 transition-transform duration-200"
+            type="button"
+          >
+            Request Update
+          </button>
+        )}
+        {["Clerk"].includes(user?.toggler) && (
+          <button
+            onClick={handleRequestDelete}
+            className="bg-red-500 border-1 border-black text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:scale-110 transition-transform duration-200"
+            type="button"
+          >
+            Request Delete
+          </button>
+        )}
       </div>
       {error && (
         <div className="text-red-500 text-sm mt-2">
