@@ -12,7 +12,11 @@ const ApprovalsPage = () => {
   const fetchNotifications = async () => {
     try {
       const res = await axios.get('http://localhost:5000/api/notifications');
-      setData(res.data);
+      // Sort notifications by createdAt in descending order (newest first)
+      const sortedNotifications = res.data.sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      setData(sortedNotifications);
     } catch (error) {
       console.error("Error fetching notifications:", error);
     }
@@ -141,6 +145,21 @@ const ApprovalsPage = () => {
     }
   };
 
+  const handleReject = async (notification) => {
+    setLoading(true);
+    try {
+      // Delete the notification using the delete route
+      await axios.delete(`http://localhost:5000/api/notifications/${notification._id}`);
+      alert('Request rejected and removed');
+      await fetchNotifications();
+    } catch (error) {
+      console.error("Error in rejection:", error);
+      alert("Failed to reject request: " + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
       <div className="max-w-4xl mx-auto">
@@ -170,6 +189,13 @@ const ApprovalsPage = () => {
                   className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
                 >
                   Approve
+                </button>
+                <button
+                  onClick={() => handleReject(item)}
+                  disabled={loading}
+                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                >
+                  Reject
                 </button>
               </div>
             )}

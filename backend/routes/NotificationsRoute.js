@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Notifications = require("../models/Notifications");
-  
+
 // router.get('/hello',(req,res)=>{
 //     res.send('Notifications Route');
 // }   );
@@ -39,6 +39,19 @@ router.put('/update-status/:id', async (req, res) => {
             { new: true }
         );
         res.json(updatedNotification);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Delete notification
+router.delete('/:id', async (req, res) => {
+    try {
+        const deletedNotification = await Notifications.findByIdAndDelete(req.params.id);
+        if (!deletedNotification) {
+            return res.status(404).json({ message: 'Notification not found' });
+        }
+        res.json({ message: 'Notification deleted successfully', notification: deletedNotification });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
