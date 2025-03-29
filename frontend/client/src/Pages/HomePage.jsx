@@ -36,6 +36,18 @@ const HomePage = () => {
           ))}
         </div>
       </div>
+      <div className="flex justify-between px-12 py-6 text-black">
+        <div>
+          <p className="text-3xl font-bold mb-2">Project Guide:</p>
+          <p className="text-2xl">Lt Col Rohit Kumar Tiwari</p>
+        </div>
+        <div className="text-right">
+          <p className="text-3xl font-bold mb-2">Interns:</p>
+          <p className="text-2xl mb-1">B. Charith Reddy</p>
+          <p className="text-2xl mb-1">Md Jafar Sadiq</p>
+          <p className="text-2xl">Potharaju Deekshitha</p>
+        </div>
+      </div>
     </div>
   );
 };

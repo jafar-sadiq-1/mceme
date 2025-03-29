@@ -99,6 +99,7 @@ const LoginPage = () => {
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
       <div className="relative w-[450px] h-[600px]">
+      <h1 className="text-4xl font-bold text-gray-800 mb-4 text-center">BahiKhata</h1>
         {/* Flip Container */}
         <div
           className={`absolute w-full h-full transition-transform duration-500 flex items-center justify-center  ${
