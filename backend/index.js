@@ -26,6 +26,7 @@ connectDb()
     const userapprovalRoutes = require('./routes/user_approvals');
     const approvalRoutes = require('./routes/approvalsRoute');
     const financialYearsRoute = require("./routes/FinancialYearsRoute");
+   // Added BBF route
     // Removed VouchersRouter import
 
     // Mount routes with prefixes
@@ -38,7 +39,7 @@ connectDb()
     app.use(signinRoutes);
     app.use(userapprovalRoutes);
     app.use('/api/approvalsRoute', approvalRoutes); // Updated this line to match frontend URL
-
+    app.use('/api/bbf', require('./routes/BBFRoutes'));
     // Test Route
     app.get('/', (req, res) => res.send('Server is running ✅'));
 

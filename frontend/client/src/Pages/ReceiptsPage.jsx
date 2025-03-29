@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useRef, useCallback } from "react";
 import Header from "../components/Header"; // This line already exists in your code
 import { AppContext } from "../AppContext/ContextProvider";
 import ReceiptForm from "../components/ReceiptForm";
@@ -25,8 +25,23 @@ const ReceiptPage = () => {
     eme_journal_fund: 0
   });
   const [totalEmeJournalFund, setTotalEmeJournalFund] = useState(0);
+  const [bbfValues, setBbfValues] = useState({
+    cash: 0,
+    bank: 0,
+    fdr: 0,
+    sydr: 0,
+    sycr: 0,
+    property: 0,
+    eme_journal_fund: 0
+  });
 
   const { financialYears, loading: yearsLoading, error: yearsError } = useFinancialYears();
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June", 
+    "July", "August", "September", "October", "November", "December"
+  ];
+  const months = monthNames.map((month, index) => ({ number: index + 1, name: month }));
 
   useEffect(() => {
     const token = localStorage.getItem('jwtToken');
@@ -41,70 +56,119 @@ const ReceiptPage = () => {
     }
   }, []);
 
+  // Add a reference to track mounted state
+  const isMounted = useRef(true);
+
   useEffect(() => {
-    const fetchReceipts = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await axios.get(
-          `http://localhost:5000/api/receipts`,
-          {
-            params: {
-              year: selectedFY,
-              month: selectedMonth
-            }
-          }
-        );
-        setReceipts(response.data);
-
-        // Fetch payments to calculate EME Journal Fund total
-        const paymentsResponse = await axios.get(
-          "http://localhost:5000/api/payments", 
-          {
-            params: {
-              year: selectedFY,
-              month: selectedMonth
-            }
-          }
-        );
-        
-        // Calculate total EME Journal Fund from payments
-        const totalSum = paymentsResponse.data.reduce(
-          (sum, record) => sum + (record.emeJournalFund || 0), 
-          0
-        );
-        setTotalEmeJournalFund(totalSum);
-        
-        // Calculate totals
-        const newTotals = response.data.reduce((acc, receipt) => ({
-          cash: acc.cash + (Number(receipt.cash) || 0),
-          bank: acc.bank + (Number(receipt.bank) || 0),
-          fdr: acc.fdr + (Number(receipt.fdr) || 0),
-          sydr: acc.sydr + (Number(receipt.sydr) || 0),
-          sycr: acc.sycr + (Number(receipt.sycr) || 0),
-          property: acc.property + (Number(receipt.property) || 0),
-          eme_journal_fund: acc.eme_journal_fund + (Number(receipt.eme_journal_fund) || 0),
-        }), {
-          cash: 0, bank: 0, fdr: 0, sydr: 0, sycr: 0, property: 0, eme_journal_fund: 0
-        });
-        
-        setTotals(newTotals);
-      } catch (error) {
-        setError("Failed to fetch data. Please try again later.");
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
-      }
+    return () => {
+      isMounted.current = false;
     };
+  }, []);
 
-    fetchReceipts();
-  }, [selectedFY, selectedMonth, setReceipts]);
+  const fetchReceiptsAndBBF = useCallback(async () => {
+    if (!selectedMonth || !selectedFY) return;
+    
+    setLoading(true);
+    try {
+        const monthIndex = monthNames.indexOf(selectedMonth);
+        const prevMonth = monthIndex === 0 ? monthNames[11] : monthNames[monthIndex - 1];
+        const [year1] = selectedFY.split('-');
+        const prevYear = monthIndex === 0 
+            ? `${Number(year1) - 1}-${year1}`  // Fixed year format
+            : selectedFY;
 
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June", 
-    "July", "August", "September", "October", "November", "December"
-  ];
-  const months = monthNames.map((month, index) => ({ number: index + 1, name: month }));
+        console.log('Fetching BBF with:', {
+            financialYear: prevYear,
+            month: prevMonth,
+            type: 'receipt'
+        });
+
+        const bbfResponse = await axios.get('http://localhost:5000/api/bbf', {
+            params: {
+                financialYear: prevYear,
+                month: prevMonth,
+                type: 'receipt'
+            }
+        });
+
+        console.log('BBF Response:', bbfResponse.data);
+
+        if (!bbfResponse.data) {
+            console.error('No BBF data received');
+            throw new Error('No BBF data available');
+        }
+
+        const normalizedBBF = {
+            cash: Number(bbfResponse.data.cash || 0),
+            bank: Number(bbfResponse.data.bank || 0),
+            fdr: Number(bbfResponse.data.fdr || 0),
+            sydr: Number(bbfResponse.data.sydr || 0),
+            sycr: Number(bbfResponse.data.sycr || 0),
+            property: Number(bbfResponse.data.property || 0),
+            eme_journal_fund: Number(bbfResponse.data.eme_journal_fund || 0)
+        };
+
+        console.log('Normalized BBF:', normalizedBBF);
+        setBbfValues(normalizedBBF);
+
+        // Rest of the existing fetch logic...
+        const [receiptsResponse, paymentsResponse] = await Promise.all([
+            axios.get('http://localhost:5000/api/receipts', {
+                params: { year: selectedFY, month: selectedMonth }
+            }),
+            axios.get('http://localhost:5000/api/payments', {
+                params: { year: selectedFY, month: selectedMonth }
+            })
+        ]);
+
+        // Process receipts and update state
+        const receipts = receiptsResponse.data;
+        setReceipts(receipts);
+
+        // Calculate EME Journal Fund from payments
+        const payments = paymentsResponse.data;
+        const emeJournalTotal = payments.reduce(
+            (sum, payment) => sum + (Number(payment.emeJournalFund) || 0),
+            0
+        );
+        setTotalEmeJournalFund(emeJournalTotal);
+
+        // Calculate totals including BBF
+        const newTotals = receipts.reduce((acc, receipt) => ({
+            cash: acc.cash + (Number(receipt.cash) || 0),
+            bank: acc.bank + (Number(receipt.bank) || 0),
+            fdr: acc.fdr + (Number(receipt.fdr) || 0),
+            sydr: acc.sydr + (Number(receipt.sydr) || 0),
+            sycr: acc.sycr + (Number(receipt.sycr) || 0),
+            property: acc.property + (Number(receipt.property) || 0),
+            eme_journal_fund: acc.eme_journal_fund + (Number(receipt.eme_journal_fund) || 0),
+        }), bbfResponse.data);
+
+        setTotals(newTotals);
+
+    } catch (error) {
+        console.error('Fetch error:', error);
+        console.error('Error details:', error.response?.data || error.message);
+        setError(error.response?.data?.message || 'Failed to fetch data');
+    } finally {
+        setLoading(false);
+    }
+}, [selectedFY, selectedMonth]);
+
+  // Memoized handlers to prevent re-renders
+  const handleFYChange = useCallback((e) => {
+    setSelectedFY(e.target.value);
+  }, []);
+
+  const handleMonthChange = useCallback((e) => {
+    setSelectedMonth(e.target.value || null);
+  }, []);
+
+  useEffect(() => {
+    if (selectedMonth && selectedFY) {
+      fetchReceiptsAndBBF();
+    }
+  }, [selectedMonth, selectedFY, fetchReceiptsAndBBF]);
 
   const year = selectedFY; 
   const month = selectedMonth; 
@@ -210,7 +274,7 @@ const ReceiptPage = () => {
             <select
               className="border px-4 py-2 rounded-lg"
               value={selectedFY}
-              onChange={(e) => setSelectedFY(e.target.value)}
+              onChange={handleFYChange}
               disabled={yearsLoading}
             >
               {yearsLoading ? (
@@ -227,7 +291,7 @@ const ReceiptPage = () => {
             <select
               className="border px-4 py-2 rounded-lg"
               value={selectedMonth || ""}
-              onChange={(e) => setSelectedMonth(e.target.value || null)}
+              onChange={handleMonthChange}
             >
               <option value="">Select Month</option>
               {months.map((month) => (
@@ -257,6 +321,19 @@ const ReceiptPage = () => {
                     </tr>
                   </thead>
                   <tbody>
+                  {/* Add BBF row */}
+                  <tr className="bg-violet-200 font-bold">
+                    <td className="px-4 py-2 border border-black text-center">Date</td>
+                    <td className="px-4 py-2 border border-black text-center">RV</td>
+                    <td className="px-4 py-2 border border-black text-center">BBF</td>
+                    <td className="px-4 py-2 border border-black text-right">{bbfValues.cash.toFixed(2)}</td>
+                    <td className="px-4 py-2 border border-black text-right">{bbfValues.bank.toFixed(2)}</td>
+                    <td className="px-4 py-2 border border-black text-right">{bbfValues.fdr.toFixed(2)}</td>
+                    <td className="px-4 py-2 border border-black text-right">{bbfValues.sydr.toFixed(2)}</td>
+                    <td className="px-4 py-2 border border-black text-right">{bbfValues.sycr.toFixed(2)}</td>
+                    <td className="px-4 py-2 border border-black text-right">{bbfValues.property.toFixed(2)}</td>
+                    <td className="px-4 py-2 border border-black text-right">{bbfValues.eme_journal_fund.toFixed(2)}</td>
+                  </tr>
                   {receipts.map((receipt, index) => (
                     <tr key={index} className={index % 2 === 0 ? "bg-violet-50" : "bg-white"}>
                       <td className="px-4 py-2 border border-black text-center">
